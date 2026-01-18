@@ -1,5 +1,7 @@
 # City Map Poster Generator
 
+***Fork of [originalankur/maptoposter](https://github.com/originalankur/maptoposter)***
+
 Generate beautiful, minimalist map posters for any city in the world.
 
 <img src="posters/singapore_neon_cyberpunk_20260108_184503.png" width="250">
