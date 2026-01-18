@@ -1,4 +1,4 @@
 cache/*
 env/
 .env/
-posters/
+out/

@@ -114,7 +114,7 @@ python create_map_poster.py --list-themes
 
 ## Output
 
-Posters are saved to `posters/` directory with format:
+Posters are saved to `out/` directory with format:
 ```
 {city}_{theme}_{YYYYMMDD_HHMMSS}.png
 ```
@@ -148,7 +148,8 @@ map_poster/
 ├── create_map_poster.py          # Main script
 ├── themes/               # Theme JSON files
 ├── fonts/                # Roboto font files
-├── posters/              # Generated posters
+├── posters/              # Example posters
+├── out/                  # Generated posters
 └── README.md
 ```
 

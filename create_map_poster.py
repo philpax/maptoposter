@@ -50,7 +50,7 @@ def cache_set(name: str, obj) -> None:
 
 THEMES_DIR = "themes"
 FONTS_DIR = "fonts"
-POSTERS_DIR = "posters"
+POSTERS_DIR = "out"
 
 def load_fonts():
     """
