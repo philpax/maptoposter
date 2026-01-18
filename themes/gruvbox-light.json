@@ -1,0 +1,17 @@
+{
+    "name": "Gruvbox Light",
+    "description": "Retro groove (light)",
+    "bg": "#fbf1c7",
+    "text": "#f9f5d7",
+    "gradient_color": "#1d2021",
+    "water": "#458588",
+    "parks": "#98971a",
+    "bike_path": "689d6a",
+    "rail": "cc241d",
+    "road_motorway": "#d66d0e",
+    "road_primary": "#d79921",
+    "road_secondary": "#504945",
+    "road_tertiary": "#665c54",
+    "road_residential": "#7c6f64",
+    "road_default": "#3c3836"
+}
