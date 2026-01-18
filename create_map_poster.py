@@ -409,21 +409,26 @@ def create_poster(city, country, point, dist, output_file):
     # 3. Plot Layers
     # Layer 1: Polygons
     if water is not None and not water.empty:
-        # Project water features in the same CRS as the graph
-        try:
-            water = ox.projection.project_gdf(water)
-        except Exception:
-            water = water.to_crs(G_proj.graph['crs'])
+        water_polys = water[water.geometry.type.isin(['Polygon', 'MultiPolygon'])]
+        if not water_polys.empty:
+            try:
+                # Project water features in the same CRS as the graph
+                water_polys = ox.projection.project_gdf(water_polys)
+            except Exception:
+                water_polys = water_polys.to_crs(G_proj.graph['crs'])
 
-        water.plot(ax=ax, facecolor=THEME['water'], edgecolor='none', zorder=1)
+            water_polys.plot(ax=ax, facecolor=THEME['water'], edgecolor='none', zorder=1)
+
     if parks is not None and not parks.empty:
-        # Project park features in the same CRS as the graph
-        try:
-            parks = ox.projection.project_gdf(parks)
-        except Exception:
-            parks = parks.to_crs(G_proj.graph['crs'])
+        park_polys = parks[parks.geometry.type.isin(['Polygon', 'MultiPolygon'])]
+        if not park_polys.empty:
+            try:
+                # Project park features in the same CRS as the graph
+                park_polys = ox.projection.project_gdf(park_polys)
+            except Exception:
+                park_polys = park_polys.to_crs(G_proj.graph['crs'])
 
-        parks.plot(ax=ax, facecolor=THEME['parks'], edgecolor='none', zorder=0)
+            park_polys.plot(ax=ax, facecolor=THEME['parks'], edgecolor='none', zorder=0)
 
     # Layer 2: Roads with hierarchy coloring
     print("Applying road hierarchy colors...")
