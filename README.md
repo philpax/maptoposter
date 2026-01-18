@@ -25,6 +25,8 @@ Generate beautiful, minimalist map posters for any city in the world.
 ## Installation
 
 ```bash
+python -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
