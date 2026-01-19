@@ -197,6 +197,8 @@ def get_edge_colors_by_type(G):
             color = THEME['road_tertiary']
         elif highway in ['residential', 'living_street', 'unclassified']:
             color = THEME['road_residential']
+        elif highway in ['cycleway']:
+            color = THEME['bike_path']
         else:
             color = THEME['road_default']
 
@@ -220,7 +222,7 @@ def get_edge_widths_by_type(G):
         # Assign width based on road importance
         if highway in ['motorway', 'motorway_link']:
             width = 1.2
-        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link']:
+        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link', 'cycleway']:
             width = 1.0
         elif highway in ['secondary', 'secondary_link']:
             width = 0.8
