@@ -371,6 +371,7 @@ def fetch_features(point, dist, tags, name):
         except CacheError as e:
             print(e)
         return data
+
     except Exception as e:
         print(f"OSMnx error while fetching features: {e}")
         return None
@@ -392,7 +393,16 @@ def create_poster(city, country, point, dist, output_file):
 
         # 3. Fetch Parks
         pbar.set_description("Downloading parks/green spaces")
-        parks = fetch_features(point, dist, {'leisure': 'park', 'landuse': 'grass'}, 'parks')
+        parks = fetch_features(
+            point,
+            dist,
+            {
+                'leisure': 'park',
+                'landuse': ['grass', 'cemetery'],
+                'natural': 'wood'
+            },
+            'parks'
+        )
         pbar.update(1)
 
     print("✓ All data retrieved successfully!")
