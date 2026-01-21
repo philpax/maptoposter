@@ -16,6 +16,7 @@ from pathlib import Path
 from hashlib import md5
 import pickle
 import asyncio
+import sys
 
 class CacheError(Exception):
     """Raised when a cache operation fails."""
@@ -67,7 +68,7 @@ def load_fonts():
     }
 
     # Verify fonts exist
-    for weight, path in fonts.items():
+    for _, path in fonts.items():
         if not os.path.exists(path):
             print(f"⚠ Font not found: {path}")
             return None
@@ -178,7 +179,7 @@ def get_edge_colors_by_type(G):
     """
     edge_colors = []
 
-    for u, v, data in G.edges(data=True):
+    for _, _, data in G.edges(data=True):
         # Get the highway type (can be a list or string)
         highway = data.get('highway', 'unclassified')
 
@@ -213,7 +214,7 @@ def get_edge_widths_by_type(G):
     """
     edge_widths = []
 
-    for u, v, data in G.edges(data=True):
+    for _, _, data in G.edges(data=True):
         highway = data.get('highway', 'unclassified')
 
         if isinstance(highway, list):
@@ -235,15 +236,15 @@ def get_edge_widths_by_type(G):
 
     return edge_widths
 
-def get_coordinates(city, country):
+def get_coordinates(search_term):
     """
     Fetches coordinates for a given city and country using geopy.
     Includes rate limiting to be respectful to the geocoding service.
     """
-    coords = f"coords_{city.lower()}_{country.lower()}"
+    coords = f"coords_{search_term}"
     cached = cache_get(coords)
     if cached:
-        print(f"✓ Using cached coordinates for {city}, {country}")
+        print(f"✓ Using cached coordinates for {search_term}")
         return cached
 
     print("Looking up coordinates...")
@@ -252,7 +253,7 @@ def get_coordinates(city, country):
     # Add a small delay to respect Nominatim's usage policy
     time.sleep(1)
 
-    location = geolocator.geocode(f"{city}, {country}")
+    location = geolocator.geocode(search_term)
 
     # If geocode returned a coroutine in some environments, run it to get the result.
     if asyncio.iscoroutine(location):
@@ -280,7 +281,7 @@ def get_coordinates(city, country):
             print(e)
         return (location.latitude, location.longitude)
     else:
-        raise ValueError(f"Could not find coordinates for {city}, {country}")
+        raise ValueError(f"Could not find coordinates for {search_term}")
 
 def get_crop_limits(G: MultiDiGraph, fig: Figure) -> tuple[tuple[float, float], tuple[float, float]]:
     """
@@ -334,16 +335,16 @@ def get_crop_limits(G: MultiDiGraph, fig: Figure) -> tuple[tuple[float, float], 
 
     return crop_xlim, crop_ylim
 
-def fetch_graph(point, dist):
+def fetch_graph(point, radius):
     lat, lon = point
-    graph = f"graph_{lat}_{lon}_{dist}"
+    graph = f"graph_{lat}_{lon}_{radius}"
     cached = cache_get(graph)
     if cached is not None:
         print("✓ Using cached street network")
         return cached
 
     try:
-        G = ox.graph_from_point(point, dist=dist, dist_type='bbox', network_type='all')
+        G = ox.graph_from_point(point, dist=radius, dist_type='bbox', network_type='all')
         # Rate limit between requests
         time.sleep(0.5)
         try:
@@ -378,26 +379,26 @@ def fetch_features(point, dist, tags, name):
         print(f"OSMnx error while fetching features: {e}")
         return None
 
-def create_poster(city, country, point, dist, output_file):
-    print(f"\nGenerating map for {city}, {country}...")
+def create_poster(title, subtitle, point, radius, output_file):
+    print(f"\nGenerating map for {title}, {subtitle}...")
 
     # Progress bar for data fetching
     with tqdm(total=3, desc="Fetching map data", unit="step", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
         # 1. Fetch Street Network
         pbar.set_description("Downloading street network")
-        G = fetch_graph(point, dist)
+        G = fetch_graph(point, radius)
         pbar.update(1)
 
         # 2. Fetch Water Features
         pbar.set_description("Downloading water features")
-        water = fetch_features(point, dist, {'natural': 'water', 'waterway': 'riverbank'}, 'water')
+        water = fetch_features(point, radius, {'natural': 'water', 'waterway': 'riverbank'}, 'water')
         pbar.update(1)
 
         # 3. Fetch Parks
         pbar.set_description("Downloading parks/green spaces")
         parks = fetch_features(
             point,
-            dist,
+            radius,
             {
                 'leisure': 'park',
                 'landuse': ['grass', 'cemetery'],
@@ -469,23 +470,21 @@ def create_poster(city, country, point, dist, output_file):
     # 4. Typography using Roboto font
     if FONTS:
         font_main = FontProperties(fname=FONTS['bold'], size=60)
-        font_top = FontProperties(fname=FONTS['bold'], size=40)
         font_sub = FontProperties(fname=FONTS['light'], size=22)
         font_coords = FontProperties(fname=FONTS['regular'], size=14)
     else:
         # Fallback to system fonts
         font_main = FontProperties(family='monospace', weight='bold', size=60)
-        font_top = FontProperties(family='monospace', weight='bold', size=40)
         font_sub = FontProperties(family='monospace', weight='normal', size=22)
         font_coords = FontProperties(family='monospace', size=14)
 
-    spaced_city = "  ".join(list(city.upper()))
+    spaced_city = "  ".join(list(title.upper()))
 
     # --- BOTTOM TEXT ---
     ax.text(0.5, 0.14, spaced_city, transform=ax.transAxes,
             color=THEME['text'], ha='center', fontproperties=font_main, zorder=11)
 
-    ax.text(0.5, 0.10, country.upper(), transform=ax.transAxes,
+    ax.text(0.5, 0.10, subtitle.upper(), transform=ax.transAxes,
             color=THEME['text'], ha='center', fontproperties=font_sub, zorder=11)
 
     lat, lon = point
@@ -522,44 +521,24 @@ City Map Poster Generator
 =========================
 
 Usage:
-  python create_map_poster.py --city <city> --country <country> [options]
+  python create_map_poster.py --t <title> --s <subtitle> [options]
 
 Examples:
-  # Iconic grid patterns
-  python create_map_poster.py -c "New York" -C "USA" -t noir -d 12000           # Manhattan grid
-  python create_map_poster.py -c "Barcelona" -C "Spain" -t warm_beige -d 8000   # Eixample district grid
+  # Infer location from title and subtitle
+  python create_map_poster.py -t "Montréal" -s "Canada" -t gruvbox-light -r 10000
 
-  # Waterfront & canals
-  python create_map_poster.py -c "Venice" -C "Italy" -t blueprint -d 4000       # Canal network
-  python create_map_poster.py -c "Amsterdam" -C "Netherlands" -t ocean -d 6000  # Concentric canals
-  python create_map_poster.py -c "Dubai" -C "UAE" -t midnight_blue -d 15000     # Palm & coastline
-
-  # Radial patterns
-  python create_map_poster.py -c "Paris" -C "France" -t pastel_dream -d 10000   # Haussmann boulevards
-  python create_map_poster.py -c "Moscow" -C "Russia" -t noir -d 12000          # Ring roads
-
-  # Organic old cities
-  python create_map_poster.py -c "Tokyo" -C "Japan" -t japanese_ink -d 15000    # Dense organic streets
-  python create_map_poster.py -c "Marrakech" -C "Morocco" -t terracotta -d 5000 # Medina maze
-  python create_map_poster.py -c "Rome" -C "Italy" -t warm_beige -d 8000        # Ancient street layout
-
-  # Coastal cities
-  python create_map_poster.py -c "San Francisco" -C "USA" -t sunset -d 10000    # Peninsula grid
-  python create_map_poster.py -c "Sydney" -C "Australia" -t ocean -d 12000      # Harbor city
-  python create_map_poster.py -c "Mumbai" -C "India" -t contrast_zones -d 18000 # Coastal peninsula
-
-  # River cities
-  python create_map_poster.py -c "London" -C "UK" -t noir -d 15000              # Thames curves
-  python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000  # Danube split
+  # Specify exact location
+  python create_map_poster.py -l "45.50941, -73.59758" -t Québec -s Canada -t noir -r 8000
 
   # List themes
   python create_map_poster.py --list-themes
 
 Options:
-  --city, -c        City name (required)
-  --country, -C     Country name (required)
+  --title, -t       Title to print ton the poster (required)
+  --subtitle, -s    Subtitle to print on the poster (required)
+  --location, -l    Location to print on the poster
   --theme, -t       Theme name (default: feature_based)
-  --distance, -d    Map radius in meters (default: 29000)
+  --radius, -r      Map radius in meters (default: 10000)
   --list-themes     List all available themes
 
 Distance guide:
@@ -568,7 +547,8 @@ Distance guide:
   15000-20000m Large metros, full city view (Tokyo, Mumbai)
 
 Available themes can be found in the 'themes/' directory.
-Generated posters are saved to 'posters/' directory.
+Example posters can be found in the 'posters/' directory.
+Generated posters are saved to 'out/' directory.
 """)
 
 def list_themes():
@@ -602,43 +582,47 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python create_map_poster.py --city "New York" --country "USA"
-  python create_map_poster.py --city Tokyo --country Japan --theme midnight_blue
-  python create_map_poster.py --city Paris --country France --theme noir --distance 15000
+  python create_map_poster.py -t "Montréal" -s "Canada" -t gruvbox-light -r 10000
+  python create_map_poster.py -l "45.50941, -73.59758" -t Québec -s Canada -t noir -r 8000
   python create_map_poster.py --list-themes
         """
     )
 
-    parser.add_argument('--city', '-c', type=str, help='City name')
-    parser.add_argument('--country', '-C', type=str, help='Country name')
-    parser.add_argument('--theme', '-t', type=str, default='feature_based', help='Theme name (default: feature_based)')
-    parser.add_argument('--distance', '-d', type=int, default=29000, help='Map radius in meters (default: 29000)')
+    parser.add_argument('--location', '-l', type=str, help='Location (will be inferred from title and subtitle if not specified)')
+    parser.add_argument('--radius', '-r', type=int, default=10000, help='Map radius in meters')
+    parser.add_argument('--title', '-t', type=str, help='Title to write on the poster')
+    parser.add_argument('--subtitle', '-s', type=str, help='Subtitle to write on the poster')
+    parser.add_argument('--theme', '-T', type=str, default='feature_based', help='Theme name (default: feature_based)')
     parser.add_argument('--list-themes', action='store_true', help='List all available themes')
 
     args = parser.parse_args()
 
     # If no arguments provided, show examples
-    if len(os.sys.argv) == 1:
+    if len(sys.argv) == 1:
         print_examples()
-        os.sys.exit(0)
+        sys.exit(0)
 
     # List themes if requested
     if args.list_themes:
         list_themes()
-        os.sys.exit(0)
+        sys.exit(0)
 
     # Validate required arguments
-    if not args.city or not args.country:
-        print("Error: --city and --country are required.\n")
+    if not args.title or not args.subtitle:
+        print("Error: --title and --subtitle are required.\n")
         print_examples()
-        os.sys.exit(1)
+        sys.exit(1)
+
+    location = args.location
+    if not args.location:
+        location = f"{args.title}, {args.subtitle}"
 
     # Validate theme exists
     available_themes = get_available_themes()
     if args.theme not in available_themes:
         print(f"Error: Theme '{args.theme}' not found.")
         print(f"Available themes: {', '.join(available_themes)}")
-        os.sys.exit(1)
+        sys.exit(1)
 
     print("=" * 50)
     print("City Map Poster Generator")
@@ -649,9 +633,9 @@ Examples:
 
     # Get coordinates and generate poster
     try:
-        coords = get_coordinates(args.city, args.country)
-        output_file = generate_output_filename(args.city, args.theme)
-        create_poster(args.city, args.country, coords, args.distance, output_file)
+        coords = get_coordinates(location)
+        output_file = generate_output_filename(args.title, args.theme)
+        create_poster(args.title, args.subtitle, coords, args.radius, output_file)
 
         print("\n" + "=" * 50)
         print("✓ Poster generation complete!")
@@ -661,4 +645,4 @@ Examples:
         print(f"\n✗ Error: {e}")
         import traceback
         traceback.print_exc()
-        os.sys.exit(1)
+        sys.exit(1)
