@@ -171,6 +171,35 @@ def create_gradient_fade(ax, color, location='bottom', zorder=10):
     ax.imshow(gradient, extent=[xlim[0], xlim[1], y_bottom, y_top], 
               aspect='auto', cmap=custom_cmap, zorder=zorder, origin='lower')
 
+def get_edge_widths_by_type(graph):
+    """
+    Assigns line widths to edges based on road type.
+    Major roads get thicker lines.
+    """
+    edge_widths = []
+
+    for _, _, data in graph.edges(data=True):
+        highway = data.get('highway', 'unclassified')
+
+        if isinstance(highway, list):
+            highway = highway[0] if highway else 'unclassified'
+
+        # Assign width based on road importance
+        if highway in ['motorway', 'motorway_link']:
+            width = 1.2
+        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link', 'cycleway']:
+            width = 1.0
+        elif highway in ['secondary', 'secondary_link']:
+            width = 0.8
+        elif highway in ['tertiary', 'tertiary_link']:
+            width = 0.6
+        else:
+            width = 0.4
+
+        edge_widths.append(width)
+
+    return edge_widths
+
 def get_coordinates(search_term):
     """
     Fetches coordinates for a given city and country using geopy.
@@ -377,14 +406,14 @@ def create_poster(title, subtitle, point, radius, output_file):
     graph_proj = ox.project_graph(graph)
 
     # Determine cropping limits to maintain the poster aspect ratio
-    crop_xlim, crop_ylim = get_crop_limits(graph_proj, fig)
+    edge_widths = get_edge_widths_by_type(graph_proj)
 
     # Plot the projected graph and then apply the cropped limits
     ox.plot_graph(
         graph_proj, ax=ax, bgcolor=THEME['bg'],
         node_size=0,
         edge_color=THEME['road'],
-        edge_linewidth=0.5,
+        edge_linewidth=edge_widths,
         show=False, close=False
     )
 
@@ -408,6 +437,7 @@ def create_poster(title, subtitle, point, radius, output_file):
         trains = ox.projection.project_gdf(trains)
         trains.plot(ax=ax, edgecolor=THEME['train'], facecolor='none', linewidth=2, zorder=10)
 
+    crop_xlim, crop_ylim = get_crop_limits(graph_proj, fig)
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(crop_xlim)
     ax.set_ylim(crop_ylim)
