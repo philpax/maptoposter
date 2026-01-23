@@ -6,7 +6,6 @@ from matplotlib.font_manager import FontProperties
 import matplotlib.colors as mcolors
 import numpy as np
 from geopy.geocoders import Nominatim
-from tqdm import tqdm
 import time
 import json
 import os
@@ -172,70 +171,6 @@ def create_gradient_fade(ax, color, location='bottom', zorder=10):
     ax.imshow(gradient, extent=[xlim[0], xlim[1], y_bottom, y_top], 
               aspect='auto', cmap=custom_cmap, zorder=zorder, origin='lower')
 
-def get_edge_colors_by_type(G):
-    """
-    Assigns colors to edges based on road type hierarchy.
-    Returns a list of colors corresponding to each edge in the graph.
-    """
-    edge_colors = []
-
-    for _, _, data in G.edges(data=True):
-        # Get the highway type (can be a list or string)
-        highway = data.get('highway', 'unclassified')
-
-        # Handle list of highway types (take the first one)
-        if isinstance(highway, list):
-            highway = highway[0] if highway else 'unclassified'
-
-        # Assign color based on road type
-        if highway in ['motorway', 'motorway_link']:
-            color = THEME['road_motorway']
-        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link']:
-            color = THEME['road_primary']
-        elif highway in ['secondary', 'secondary_link']:
-            color = THEME['road_secondary']
-        elif highway in ['tertiary', 'tertiary_link']:
-            color = THEME['road_tertiary']
-        elif highway in ['residential', 'living_street', 'unclassified']:
-            color = THEME['road_residential']
-        elif highway in ['cycleway']:
-            color = THEME['bike_path']
-        else:
-            color = THEME['road_default']
-
-        edge_colors.append(color)
-
-    return edge_colors
-
-def get_edge_widths_by_type(G):
-    """
-    Assigns line widths to edges based on road type.
-    Major roads get thicker lines.
-    """
-    edge_widths = []
-
-    for _, _, data in G.edges(data=True):
-        highway = data.get('highway', 'unclassified')
-
-        if isinstance(highway, list):
-            highway = highway[0] if highway else 'unclassified'
-
-        # Assign width based on road importance
-        if highway in ['motorway', 'motorway_link']:
-            width = 1.2
-        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link', 'cycleway']:
-            width = 1.0
-        elif highway in ['secondary', 'secondary_link']:
-            width = 0.8
-        elif highway in ['tertiary', 'tertiary_link']:
-            width = 0.6
-        else:
-            width = 0.4
-
-        edge_widths.append(width)
-
-    return edge_widths
-
 def get_coordinates(search_term):
     """
     Fetches coordinates for a given city and country using geopy.
@@ -344,7 +279,7 @@ def fetch_graph(point, radius):
         return cached
 
     try:
-        G = ox.graph_from_point(point, dist=radius, dist_type='bbox', network_type='all')
+        G = ox.graph_from_point(point, dist=radius, dist_type='bbox', network_type='drive')
         # Rate limit between requests
         time.sleep(0.5)
         try:
@@ -382,31 +317,35 @@ def fetch_features(point, dist, tags, name):
 def create_poster(title, subtitle, point, radius, output_file):
     print(f"\nGenerating map for {title}, {subtitle}...")
 
-    # Progress bar for data fetching
-    with tqdm(total=3, desc="Fetching map data", unit="step", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
-        # 1. Fetch Street Network
-        pbar.set_description("Downloading street network")
-        G = fetch_graph(point, radius)
-        pbar.update(1)
+    print("Retrieving street network...")
+    graph = fetch_graph(point, radius)
 
-        # 2. Fetch Water Features
-        pbar.set_description("Downloading water features")
-        water = fetch_features(point, radius, {'natural': 'water', 'waterway': 'riverbank'}, 'water')
-        pbar.update(1)
+    print("Retrieving subway network...")
+    subways = fetch_features(point, radius, {'railway': 'subway'}, 'subway')
 
-        # 3. Fetch Parks
-        pbar.set_description("Downloading parks/green spaces")
-        parks = fetch_features(
-            point,
-            radius,
-            {
-                'leisure': 'park',
-                'landuse': ['grass', 'cemetery'],
-                'natural': 'wood'
-            },
-            'parks'
-        )
-        pbar.update(1)
+    print("Retrieving tram network...")
+    trams = fetch_features(point, radius, {'railway': 'tram'}, 'tram')
+
+    print("Retrieving light rail network...")
+    light_rails = fetch_features(point, radius, {'railway': 'light_rail'}, 'light_rail')
+
+    print("Retrieving train network...")
+    trains = fetch_features(point, radius, {'railway': 'rail'}, 'rail')
+
+    print("Retrieving water features...")
+    water = fetch_features(point, radius, {'natural': 'water', 'waterway': 'riverbank'}, 'water')
+
+    print("Retrieving parks/green spaces...")
+    parks = fetch_features(
+        point,
+        radius,
+        {
+            'leisure': 'park',
+            'landuse': ['grass', 'cemetery'],
+            'natural': 'wood'
+        },
+        'parks'
+    )
 
     print("✓ All data retrieved successfully!")
 
@@ -416,56 +355,66 @@ def create_poster(title, subtitle, point, radius, output_file):
     ax.set_facecolor(THEME['bg'])
     ax.set_position((0.0, 0.0, 1.0, 1.0))
 
-    # Project graph to a metric CRS so distances and aspect are linear (meters)
-    G_proj = ox.project_graph(G)
-
     # 3. Plot Layers
     # Layer 1: Polygons
-    if water is not None and not water.empty:
-        water_polys = water[water.geometry.type.isin(['Polygon', 'MultiPolygon'])]
-        if not water_polys.empty:
-            try:
-                # Project water features in the same CRS as the graph
-                water_polys = ox.projection.project_gdf(water_polys)
-            except Exception:
-                water_polys = water_polys.to_crs(G_proj.graph['crs'])
-
-            water_polys.plot(ax=ax, facecolor=THEME['water'], edgecolor='none', zorder=1)
-
+    print("Drawing parks/green spaces...")
     if parks is not None and not parks.empty:
         park_polys = parks[parks.geometry.type.isin(['Polygon', 'MultiPolygon'])]
         if not park_polys.empty:
-            try:
-                # Project park features in the same CRS as the graph
-                park_polys = ox.projection.project_gdf(park_polys)
-            except Exception:
-                park_polys = park_polys.to_crs(G_proj.graph['crs'])
-
+            park_polys = ox.projection.project_gdf(park_polys)
             park_polys.plot(ax=ax, facecolor=THEME['parks'], edgecolor='none', zorder=0)
 
+    print("Drawing water...")
+    if water is not None and not water.empty:
+        water_polys = water[water.geometry.type.isin(['Polygon', 'MultiPolygon'])]
+        if not water_polys.empty:
+            water_polys = ox.projection.project_gdf(water_polys)
+            water_polys.plot(ax=ax, facecolor=THEME['water'], edgecolor='none', zorder=1)
+
     # Layer 2: Roads with hierarchy coloring
-    print("Applying road hierarchy colors...")
-    edge_colors = get_edge_colors_by_type(G_proj)
-    edge_widths = get_edge_widths_by_type(G_proj)
+    # Project graph to a metric CRS so distances and aspect are linear (meters)
+    print("Drawing roads...")
+    graph_proj = ox.project_graph(graph)
 
     # Determine cropping limits to maintain the poster aspect ratio
-    crop_xlim, crop_ylim = get_crop_limits(G_proj, fig)
+    crop_xlim, crop_ylim = get_crop_limits(graph_proj, fig)
 
     # Plot the projected graph and then apply the cropped limits
     ox.plot_graph(
-        G_proj, ax=ax, bgcolor=THEME['bg'],
+        graph_proj, ax=ax, bgcolor=THEME['bg'],
         node_size=0,
-        edge_color=edge_colors,
-        edge_linewidth=edge_widths,
+        edge_color=THEME['road'],
+        edge_linewidth=0.5,
         show=False, close=False
     )
+
+    print("Drawing subway tracks...")
+    if subways is not None and not subways.empty:
+        subways = ox.projection.project_gdf(subways)
+        subways.plot(ax=ax, facecolor='none', edgecolor=THEME['subway'], linewidth=3, zorder=13)
+
+    print("Drawing tram tracks...")
+    if trams is not None and not trams.empty:
+        trams = ox.projection.project_gdf(trams)
+        trams.plot(ax=ax, facecolor='none', edgecolor=THEME['tram'], linewidth=2.5, zorder=11)
+
+    print("Drawing light rail tracks...")
+    if light_rails is not None and not light_rails.empty:
+        light_rails = ox.projection.project_gdf(light_rails)
+        light_rails.plot(ax=ax, facecolor='none', edgecolor=THEME['light_rail'], linewidth=2.5, zorder=12)
+
+    print("Drawing train tracks...")
+    if trains is not None and not trains.empty:
+        trains = ox.projection.project_gdf(trains)
+        trains.plot(ax=ax, edgecolor=THEME['train'], facecolor='none', linewidth=2, zorder=10)
+
     ax.set_aspect('equal', adjustable='box')
     ax.set_xlim(crop_xlim)
     ax.set_ylim(crop_ylim)
 
     # Layer 3: Gradients (Top and Bottom)
-    create_gradient_fade(ax, THEME['gradient_color'], location='bottom', zorder=10)
-    create_gradient_fade(ax, THEME['gradient_color'], location='top', zorder=10)
+    create_gradient_fade(ax, THEME['gradient_color'], location='bottom', zorder=20)
+    create_gradient_fade(ax, THEME['gradient_color'], location='top', zorder=20)
 
     # 4. Typography using Roboto font
     if FONTS:
@@ -482,10 +431,10 @@ def create_poster(title, subtitle, point, radius, output_file):
 
     # --- BOTTOM TEXT ---
     ax.text(0.5, 0.14, spaced_city, transform=ax.transAxes,
-            color=THEME['text'], ha='center', fontproperties=font_main, zorder=11)
+            color=THEME['text'], ha='center', fontproperties=font_main, zorder=21)
 
     ax.text(0.5, 0.10, subtitle.upper(), transform=ax.transAxes,
-            color=THEME['text'], ha='center', fontproperties=font_sub, zorder=11)
+            color=THEME['text'], ha='center', fontproperties=font_sub, zorder=21)
 
     lat, lon = point
     coords = f"{lat:.4f}° N / {lon:.4f}° E" if lat >= 0 else f"{abs(lat):.4f}° S / {lon:.4f}° E"
@@ -493,10 +442,10 @@ def create_poster(title, subtitle, point, radius, output_file):
         coords = coords.replace("E", "W")
 
     ax.text(0.5, 0.07, coords, transform=ax.transAxes,
-            color=THEME['text'], alpha=0.7, ha='center', fontproperties=font_coords, zorder=11)
+            color=THEME['text'], alpha=0.7, ha='center', fontproperties=font_coords, zorder=21)
 
     ax.plot([0.4, 0.6], [0.125, 0.125], transform=ax.transAxes, 
-            color=THEME['text'], linewidth=1, zorder=11)
+            color=THEME['text'], linewidth=1, zorder=21)
 
     # --- ATTRIBUTION (bottom right) ---
     if FONTS:
@@ -506,7 +455,7 @@ def create_poster(title, subtitle, point, radius, output_file):
 
     ax.text(0.98, 0.02, "© OpenStreetMap contributors", transform=ax.transAxes,
             color=THEME['text'], alpha=0.5, ha='right', va='bottom', 
-            fontproperties=font_attr, zorder=11)
+            fontproperties=font_attr, zorder=21)
 
     # 5. Save
     print(f"Saving to {output_file}...")
