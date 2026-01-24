@@ -1,4 +1,7 @@
 cache/*
-env/
-.env/
+.venv/
 out/
+
+*.egg
+*.egg-info/
+__pycache__/

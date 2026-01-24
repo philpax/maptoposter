@@ -1,0 +1,26 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maptoposter"
+version = "0.1.0"
+description = "Generate beautiful city‑map posters"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}          # or your chosen license
+authors = [
+    {name = "Catherine Gilbert", email = "git@olaren.dev"}
+]
+
+# Runtime dependencies – add the ones you actually need
+dependencies = [
+    "osmnx>=2.0",
+    "matplotlib>=3.10",
+]
+
+# If you want a console script so you can run `maptoposter` directly:
+[project.scripts]
+maptoposter = "maptoposter.__main__:main"
+

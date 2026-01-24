@@ -9,7 +9,6 @@
   "subway": "#8B2500",
   "tram": "#B8450A",
   "light_rail": "#B8450A",
-  "bus": "#CC7A30",
   "train": "#D9A050",
   "road": "#CC7A30"
 }
