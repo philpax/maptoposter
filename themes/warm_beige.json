@@ -6,10 +6,9 @@
   "gradient_color": "#F5F0E8",
   "water": "#DDD5C8",
   "parks": "#E8E4D8",
-  "road_motorway": "#8B7355",
-  "road_primary": "#A08B70",
-  "road_secondary": "#B5A48E",
-  "road_tertiary": "#C9BBAA",
-  "road_residential": "#D9CFC2",
-  "road_default": "#C9BBAA"
+  "subway": "#8B7355",
+  "tram": "#A08B70",
+  "light_rail": "#A08B70",
+  "train": "#B5A48E",
+  "road": "#C9BBAA"
 }
