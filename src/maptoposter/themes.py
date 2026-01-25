@@ -28,7 +28,7 @@ themes = {
         train="#2A2A2A",
         road="#3A3A3A",
     ),
-    "automn": Theme(
+    "autumn": Theme(
         bg="#FBF7F0",
         text="#8B4513",
         gradient_color="#FBF7F0",
