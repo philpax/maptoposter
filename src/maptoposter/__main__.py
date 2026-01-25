@@ -60,7 +60,7 @@ def parse_args() -> Tuple[argparse.Namespace, Callable[[], None]]:
         "--location",
         "-l",
         type=str,
-        help="Location (will be inferred from title and subtitle if not specified)",
+        help="Location (default: inferred from title and subtitle if not specified)",
     )
     parser.add_argument(
         "--radius", "-r", type=int, default=10000, help="Map radius in meters"
