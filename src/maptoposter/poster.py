@@ -59,7 +59,7 @@ def plot(cfg: PosterConfig, data: PosterData) -> Figure:
     print("Drawing subway tracks...")
     _plot_edges(ax, data.subways, cfg.theme.subway, linewidth=3, zorder=13)
 
-    _crop_to_dimensions(ax, roads_proj, fig)
+    _crop_to_dimensions(ax, cfg.point, cfg.radius, roads_proj, fig)
 
     print("Drawing overlay...")
     _draw_gradient(ax, cfg.theme.gradient_color, position="bottom", zorder=20)
@@ -133,47 +133,37 @@ def _plot_roads(ax: Axes, roads: MultiDiGraph, theme: Theme) -> None:
     )
 
 
-def _crop_to_dimensions(ax: Axes, roads_proj: MultiDiGraph, fig: Figure) -> None:
+def _crop_to_dimensions(
+    ax: Axes,
+    point: Tuple[float, float],
+    radius: int,
+    roads_proj: MultiDiGraph,
+    fig: Figure,
+) -> None:
+    lat, lon = point
 
-    # Compute node extents in projected coordinates
-    xs = [data["x"] for _, data in roads_proj.nodes(data=True)]
-    ys = [data["y"] for _, data in roads_proj.nodes(data=True)]
-    minx, maxx = min(xs), max(xs)
-    miny, maxy = min(ys), max(ys)
-    x_range = maxx - minx
-    y_range = maxy - miny
+    proj, _ = osmnx.projection.project_geometry(
+        Point(lon, lat), crs="EPSG:4326", to_crs=roads_proj.graph["crs"]
+    )
+    center = cast(Point, proj)
+    center_x, center_y = center.x, center.y
 
     fig_width, fig_height = fig.get_size_inches()
-    desired_aspect = fig_width / fig_height
-    current_aspect = x_range / y_range
+    aspect = fig_width / fig_height
 
-    center_x = (minx + maxx) / 2
-    center_y = (miny + maxy) / 2
+    # Start from the *requested* radius
+    half_x = radius
+    half_y = radius
 
-    if current_aspect > desired_aspect:
-        # Too wide, need to crop horizontally
-        desired_x_range = y_range * desired_aspect
-        new_minx = center_x - desired_x_range / 2
-        new_maxx = center_x + desired_x_range / 2
-        new_miny, new_maxy = miny, maxy
-        crop_xlim = (new_minx, new_maxx)
-        crop_ylim = (new_miny, new_maxy)
-    elif current_aspect < desired_aspect:
-        # Too tall, need to crop vertically
-        desired_y_range = x_range / desired_aspect
-        new_miny = center_y - desired_y_range / 2
-        new_maxy = center_y + desired_y_range / 2
-        new_minx, new_maxx = minx, maxx
-        crop_xlim = (new_minx, new_maxx)
-        crop_ylim = (new_miny, new_maxy)
-    else:
-        # Otherwise, keep original extents (no horizontal crop)
-        crop_xlim = (minx, maxx)
-        crop_ylim = (miny, maxy)
+    # Cut inward to match aspect
+    if aspect > 1:  # landscape → reduce height
+        half_y = half_x / aspect
+    else:  # portrait → reduce width
+        half_x = half_y * aspect
 
     ax.set_aspect("equal", adjustable="box")
-    ax.set_xlim(crop_xlim)
-    ax.set_ylim(crop_ylim)
+    ax.set_xlim(center_x - half_x, center_x + half_x)
+    ax.set_ylim(center_y - half_y, center_y + half_y)
 
 
 def _draw_gradient(ax: Axes, color: str, position: str, zorder: int) -> None:
