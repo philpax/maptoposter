@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class Theme:
     bg: str
@@ -13,6 +14,7 @@ class Theme:
     train: str
     road: str
 
+
 themes = {
     "feature_based": Theme(
         bg="#FFFFFF",
@@ -24,7 +26,7 @@ themes = {
         tram="#1A1A1A",
         light_rail="#1A1A1A",
         train="#2A2A2A",
-        road="#3A3A3A"
+        road="#3A3A3A",
     ),
     "automn": Theme(
         bg="#FBF7F0",
@@ -36,7 +38,7 @@ themes = {
         tram="#B8450A",
         light_rail="#B8450A",
         train="#D9A050",
-        road="#CC7A30"
+        road="#CC7A30",
     ),
     "blueprint": Theme(
         bg="#1A3A5C",
@@ -48,7 +50,7 @@ themes = {
         tram="#C5DCF0",
         light_rail="#C5DCF0",
         train="#9FC5E8",
-        road="#7BAED4"
+        road="#7BAED4",
     ),
     "copper_patina": Theme(
         bg="#E8F0F0",
@@ -60,7 +62,7 @@ themes = {
         tram="#5A8A8A",
         light_rail="#5A8A8A",
         train="#6B9E9E",
-        road="#88B4B4"
+        road="#88B4B4",
     ),
     "forest": Theme(
         bg="#F0F4F0",
@@ -72,7 +74,7 @@ themes = {
         tram="#3D6B55",
         light_rail="#3D6B55",
         train="#5A8A70",
-        road="#7AAA90"
+        road="#7AAA90",
     ),
     "japanese_ink": Theme(
         bg="#FAF8F5",
@@ -84,7 +86,7 @@ themes = {
         tram="#4A4A4A",
         light_rail="#4A4A4A",
         train="#6A6A6A",
-        road="#909090"
+        road="#909090",
     ),
     "midnight_blue": Theme(
         bg="#0A1628",
@@ -96,7 +98,7 @@ themes = {
         tram="#C9A227",
         light_rail="#C9A227",
         train="#A8893A",
-        road="#8B7355"
+        road="#8B7355",
     ),
     "monochrome_blue": Theme(
         bg="#F5F8FA",
@@ -108,7 +110,7 @@ themes = {
         tram="#2A5580",
         light_rail="#2A5580",
         train="#4A7AA8",
-        road="#4A7AA8"
+        road="#4A7AA8",
     ),
     "neon_cyberpunk": Theme(
         bg="#0D0D1A",
@@ -120,7 +122,7 @@ themes = {
         tram="#00FFFF",
         light_rail="#00FFFF",
         train="#00C8C8",
-        road="#0098A0"
+        road="#0098A0",
     ),
     "noir": Theme(
         bg="#000000",
@@ -132,7 +134,7 @@ themes = {
         tram="#E0E0E0",
         light_rail="#E0E0E0",
         train="#B0B0B0",
-        road="#808080"
+        road="#808080",
     ),
     "ocean": Theme(
         bg="#F0F8FA",
@@ -144,7 +146,7 @@ themes = {
         tram="#2A7A9A",
         light_rail="#2A7A9A",
         train="#4A9AB8",
-        road="#4A9AB8"
+        road="#4A9AB8",
     ),
     "pastel_dream": Theme(
         bg="#FAF7F2",
@@ -156,7 +158,7 @@ themes = {
         tram="#9BA4B0",
         light_rail="#9BA4B0",
         train="#B5AEBB",
-        road="#C9C0C9"
+        road="#C9C0C9",
     ),
     "sunset": Theme(
         bg="#FDF5F0",
@@ -168,7 +170,7 @@ themes = {
         tram="#D87A5A",
         light_rail="#D87A5A",
         train="#E8A088",
-        road="#E8A088"
+        road="#E8A088",
     ),
     "terracotta": Theme(
         bg="#F5EDE4",
@@ -180,7 +182,7 @@ themes = {
         tram="#B8653A",
         light_rail="#B8653A",
         train="#C9846A",
-        road="#D9A08A"
+        road="#D9A08A",
     ),
     "warm_beige": Theme(
         bg="#F5F0E8",
@@ -192,6 +194,6 @@ themes = {
         tram="#A08B70",
         light_rail="#A08B70",
         train="#B5A48E",
-        road="#C9BBAA"
-    )
+        road="#C9BBAA",
+    ),
 }

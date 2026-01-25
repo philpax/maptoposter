@@ -7,15 +7,17 @@ from typing import TypeVar, Any
 CACHE_DIR_PATH = os.environ.get("CACHE_DIR", "cache")
 CACHE_DIR = Path(CACHE_DIR_PATH)
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class CacheError(Exception):
-    """Raised when a cache operation fails."""
     pass
+
 
 def _filename(key: str) -> Path:
     encoded = md5(key.encode()).hexdigest()
     return CACHE_DIR / f"{encoded}.pkl"
+
 
 def get(key: str) -> object | None:
     path = _filename(key)
@@ -23,6 +25,7 @@ def get(key: str) -> object | None:
         with path.open("rb") as f:
             return pickle.load(f)
     return None
+
 
 def set(key: str, obj: Any) -> None:
     path = _filename(key)

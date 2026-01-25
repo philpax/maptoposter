@@ -12,6 +12,7 @@ import osmnx
 from shapely import Point
 from typing import Tuple, cast
 
+
 @dataclass
 class PosterData:
     parks: GeoDataFrame | None
@@ -22,6 +23,7 @@ class PosterData:
     light_rails: GeoDataFrame | None
     trains: GeoDataFrame | None
 
+
 @dataclass
 class PosterConfig:
     title: str
@@ -29,6 +31,7 @@ class PosterConfig:
     point: Tuple[float, float]
     radius: int
     theme: Theme
+
 
 def plot(cfg: PosterConfig, data: PosterData) -> Figure:
     print("Rendering map...")
@@ -78,53 +81,63 @@ def _plot_polys_only(ax: Axes, gdf: GeoDataFrame | None, color: str, zorder: int
     if gdf is None:
         return
 
-    polys = gdf.loc[gdf.geometry.type.isin(['Polygon', 'MultiPolygon'])]
+    polys = gdf.loc[gdf.geometry.type.isin(["Polygon", "MultiPolygon"])]
     if polys.empty:
         return
 
     proj = osmnx.projection.project_gdf(polys)
-    proj.plot(ax=ax, facecolor=color, edgecolor='none', zorder=zorder)
+    proj.plot(ax=ax, facecolor=color, edgecolor="none", zorder=zorder)
 
 
-def _plot_edges(ax: Axes, gdf: GeoDataFrame | None, color: str, linewidth: float, zorder: int):
+def _plot_edges(
+    ax: Axes, gdf: GeoDataFrame | None, color: str, linewidth: float, zorder: int
+):
     if gdf is None or gdf.empty:
         return
 
     proj = osmnx.projection.project_gdf(gdf)
-    proj.plot(ax=ax, facecolor='none', edgecolor=color, linewidth=linewidth, zorder=zorder)
+    proj.plot(
+        ax=ax, facecolor="none", edgecolor=color, linewidth=linewidth, zorder=zorder
+    )
 
 
 def _plot_roads(ax: Axes, roads: MultiDiGraph, theme: Theme) -> None:
     edge_widths = []
     for _, _, data in roads.edges(data=True):
-        highway = data.get('highway', 'unclassified')
+        highway = data.get("highway", "unclassified")
 
         if isinstance(highway, list):
-            highway = highway[0] if highway else 'unclassified'
+            highway = highway[0] if highway else "unclassified"
 
-        if highway in ['motorway', 'motorway_link']:
+        if highway in ["motorway", "motorway_link"]:
             width = 1.2
-        elif highway in ['trunk', 'trunk_link', 'primary', 'primary_link']:
+        elif highway in ["trunk", "trunk_link", "primary", "primary_link"]:
             width = 1.0
-        elif highway in ['secondary', 'secondary_link']:
+        elif highway in ["secondary", "secondary_link"]:
             width = 0.8
-        elif highway in ['tertiary', 'tertiary_link']:
+        elif highway in ["tertiary", "tertiary_link"]:
             width = 0.6
         else:
             width = 0.4
 
         edge_widths.append(width)
 
-    osmnx.plot_graph(roads, ax=ax, node_size=0, bgcolor=theme.bg,
-                     edge_color=theme.road, edge_linewidth=edge_widths,
-                     show=False)
+    osmnx.plot_graph(
+        roads,
+        ax=ax,
+        node_size=0,
+        bgcolor=theme.bg,
+        edge_color=theme.road,
+        edge_linewidth=edge_widths,
+        show=False,
+    )
 
 
 def _crop_to_dimensions(ax: Axes, roads_proj: MultiDiGraph, fig: Figure) -> None:
 
     # Compute node extents in projected coordinates
-    xs = [data['x'] for _, data in roads_proj.nodes(data=True)]
-    ys = [data['y'] for _, data in roads_proj.nodes(data=True)]
+    xs = [data["x"] for _, data in roads_proj.nodes(data=True)]
+    ys = [data["y"] for _, data in roads_proj.nodes(data=True)]
     minx, maxx = min(xs), max(xs)
     miny, maxy = min(ys), max(ys)
     x_range = maxx - minx
@@ -158,7 +171,7 @@ def _crop_to_dimensions(ax: Axes, roads_proj: MultiDiGraph, fig: Figure) -> None
         crop_xlim = (minx, maxx)
         crop_ylim = (miny, maxy)
 
-    ax.set_aspect('equal', adjustable='box')
+    ax.set_aspect("equal", adjustable="box")
     ax.set_xlim(crop_xlim)
     ax.set_ylim(crop_ylim)
 
@@ -172,8 +185,8 @@ def _draw_gradient(ax: Axes, color: str, position: str, zorder: int) -> None:
     colors[:, 0] = rgb[0]
     colors[:, 1] = rgb[1]
     colors[:, 2] = rgb[2]
-  
-    if position == 'bottom':
+
+    if position == "bottom":
         colors[:, 3] = numpy.linspace(1, 0, 256)
         extent_y_start = 0
         extent_y_end = 0.25
@@ -191,25 +204,54 @@ def _draw_gradient(ax: Axes, color: str, position: str, zorder: int) -> None:
     y_bottom = ylim[0] + y_range * extent_y_start
     y_top = ylim[0] + y_range * extent_y_end
 
-    ax.imshow(gradient, extent=(xlim[0], xlim[1], y_bottom, y_top),
-              aspect='auto', cmap=custom_cmap, zorder=zorder, origin='lower')
+    ax.imshow(
+        gradient,
+        extent=(xlim[0], xlim[1], y_bottom, y_top),
+        aspect="auto",
+        cmap=custom_cmap,
+        zorder=zorder,
+        origin="lower",
+    )
 
 
-def _draw_text(ax: Axes, font_family: str, title: str, subtitle: str,
-               point: Tuple[float, float], color: str, zorder: int) -> None:
-    font_main = FontProperties(family=font_family, weight='bold', size=60)
-    font_sub = FontProperties(family=font_family, weight='normal', size=22)
+def _draw_text(
+    ax: Axes,
+    font_family: str,
+    title: str,
+    subtitle: str,
+    point: Tuple[float, float],
+    color: str,
+    zorder: int,
+) -> None:
+    font_main = FontProperties(family=font_family, weight="bold", size=60)
+    font_sub = FontProperties(family=font_family, weight="normal", size=22)
     font_coords = FontProperties(family=font_family, size=14)
     font_attributions = FontProperties(family=font_family, size=8)
 
     # Title
     title_spaced_letters = "  ".join(list(title.upper()))
-    ax.text(x=0.5, y=0.14, s=title_spaced_letters, transform=ax.transAxes, color=color,
-            ha='center', fontproperties=font_main, zorder=zorder)
+    ax.text(
+        x=0.5,
+        y=0.14,
+        s=title_spaced_letters,
+        transform=ax.transAxes,
+        color=color,
+        ha="center",
+        fontproperties=font_main,
+        zorder=zorder,
+    )
 
     # Subtitle
-    ax.text(x=0.5, y=0.10, s=subtitle.upper(), transform=ax.transAxes, color=color,
-            ha='center', fontproperties=font_sub, zorder=zorder)
+    ax.text(
+        x=0.5,
+        y=0.10,
+        s=subtitle.upper(),
+        transform=ax.transAxes,
+        color=color,
+        ha="center",
+        fontproperties=font_sub,
+        zorder=zorder,
+    )
 
     # Coordinates
     lat, long = point
@@ -217,14 +259,36 @@ def _draw_text(ax: Axes, font_family: str, title: str, subtitle: str,
     long_dir = "E" if long >= 0 else "W"
     coords = f"{abs(lat):.4f}° {lat_dir} / {abs(long):.4f}° {long_dir}"
 
-    ax.text(x=0.5, y=0.07, s=coords, transform=ax.transAxes, color=color,
-            alpha=0.7, ha='center', fontproperties=font_coords, zorder=zorder)
+    ax.text(
+        x=0.5,
+        y=0.07,
+        s=coords,
+        transform=ax.transAxes,
+        color=color,
+        alpha=0.7,
+        ha="center",
+        fontproperties=font_coords,
+        zorder=zorder,
+    )
 
-    ax.plot([0.4, 0.6], [0.125, 0.125], transform=ax.transAxes, color=color,
-            linewidth=1, zorder=zorder)
+    ax.plot(
+        [0.4, 0.6],
+        [0.125, 0.125],
+        transform=ax.transAxes,
+        color=color,
+        linewidth=1,
+        zorder=zorder,
+    )
 
-    ax.text(x=0.98, y=0.02, s="© OpenStreetMap contributors",
-            transform=ax.transAxes, color=color, alpha=0.7, ha='right',
-            va='bottom', fontproperties=font_attributions, zorder=zorder)
-
-
+    ax.text(
+        x=0.98,
+        y=0.02,
+        s="© OpenStreetMap contributors",
+        transform=ax.transAxes,
+        color=color,
+        alpha=0.7,
+        ha="right",
+        va="bottom",
+        fontproperties=font_attributions,
+        zorder=zorder,
+    )
