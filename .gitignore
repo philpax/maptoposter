@@ -1,6 +1,7 @@
 cache/*
 .venv/
 out/
+build/
 
 *.egg
 *.egg-info/
