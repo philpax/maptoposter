@@ -5,8 +5,6 @@
 Generate beautiful map posters with an emphasis on public transportation
 for any city in the world.
 
-![An example of the output of this programm using the city of Montréal and the autumn theme](examples/montréal_autumn.png)
-
 ## Installation
 
 ```bash
@@ -28,7 +26,7 @@ python -m maptoposter --list-themes
 python -m maptoposter -l "52.5170120, 13.3888222" -t Berlin -s Germany -r 10000 -T noir
 ```
 
-![An example of the output using the city of Berlin and the noir theme](examples/berlin_noir.png)
+![An example of the output using the city of Berlin and the noir theme](examples/berlin_noir.png) { width=250 }
 
 ```bash
 python -m maptoposter -l "43.2961743, 5.3699525" -t Marseille -s France -r 8000 -T ocean
