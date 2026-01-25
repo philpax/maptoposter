@@ -21,7 +21,10 @@ def fetch_data(point: Tuple[float, float], radius: int) -> PosterData:
 
     print("Retrieving water features...")
     water = _fetch_features(
-        point, radius, {"natural": "water", "waterway": "riverbank"}, "water"
+        point,
+        radius,
+        {"natural": ["water", "bay"], "waterway": "riverbank"},
+        "water",
     )
 
     print("Retrieving roads...")
