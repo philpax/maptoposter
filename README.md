@@ -18,32 +18,19 @@ pip install .
 ```bash
 python -m maptoposter -l <location> -t <title> -s <subtitle> -r <radius> -T <theme>
 python -m maptoposter --list-themes
+python -m maptoposter --help
 ```
 
 ## Examples
 
-`python -m maptoposter -l "52.5170120, 13.3888222" -t Berlin -s Germany -r 10000 -T noir`
-<img src="examples/berlin_noir.png" alt="An example of the output using the city of Berlin and the noir theme" width="250">
-
-
-`python -m maptoposter -l "43.2961743, 5.3699525" -t Marseille -s France -r 8000 -T ocean`
-<img src="examples/marseille_ocean.png" alt="An example of the output using the city of Marseille and the ocean theme" width="250">
-
-
-`python -m maptoposter -l "45.50677, -73.59524" -t Montréal -s Québec -r 12000 -T autumn`
-<img src="examples/montréal_autumn.png" alt="An example of the output using the city of Montréal and the autumn theme" width="250">
-
-
-`python -m maptoposter -l "48.8534951, 2.3483915" -t Paris -s France -r 8000 -T emerald`
-<img src="examples/paris_emerald.png" alt="An example of the output using the city of Paris and the emerald theme" width="250">
-
-
-`python -m maptoposter -l "31.2074091, 121.4649932" -t Shanghai -s China -r 10000 -T forest`
-<img src="examples/shanghai_forest.png" alt="An example of the output using the city of Shanghai and the forest theme" width="250">
-
-
-`python -m maptoposter -t Tokyo -s Japan -r 12000 -T japanese_ink`
-<img src="examples/Tokyo.png" alt="An example of the output using the city of Tokyo and the japanese_ink theme" width="250">
+| Command | Result |
+| ------- | ------ |
+| `pthon -m maptoposter -l "52.5170120, 13.3888222" -t Berlin -s Germany -r 10000 -T noir` | <img src="examples/berlin_noir.png" alt="An example of the output using the city of Berlin and the noir theme" width="250"> |
+| `python -m maptoposter -l "43.2961743, 5.3699525" -t Marseille -s France -r 8000 -T ocean` | <img src="examples/marseille_ocean.png" alt="An example of the output using the city of Marseille and the ocean theme" width="250"> |
+| `python -m maptoposter -l "45.50677, -73.59524" -t Montréal -s Québec -r 12000 -T autumn` | <img src="examples/montréal_autumn.png" alt="An example of the output using the city of Montréal and the autumn theme" width="250"> |
+| `python -m maptoposter -l "48.8534951, 2.3483915" -t Paris -s France -r 8000 -T emerald` | <img src="examples/paris_emerald.png" alt="An example of the output using the city of Paris and the emerald theme" width="250"> |
+| `python -m maptoposter -l "31.2074091, 121.4649932" -t Shanghai -s China -r 10000 -T forest` | <img src="examples/shanghai_forest.png" alt="An example of the output using the city of Shanghai and the forest theme" width="250"> |
+| `python -m maptoposter -t Tokyo -s Japan -r 12000 -T japanese_ink` | <img src="examples/tokyo_japanese_ink.png" alt="An example of the output using the city of Tokyo and the japanese_ink theme" width="250"> |
 
 
 ### Distance Guide
