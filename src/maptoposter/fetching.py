@@ -11,14 +11,14 @@ def fetch_point(search_term: str) -> Tuple[float, float]:
 
 def fetch_data(console: Console, point: Tuple[float, float], radius: int) -> PosterData:
     console.print("Retrieving [bold green]parks/green spaces[/bold green]")
-    parks = osmnx.features_from_point(
+    parks = _fetch_features(
         point,
         {"leisure": "park", "landuse": ["grass", "cemetery"], "natural": "wood"},
         radius,
     )
 
     console.print("Retrieving [bold blue]water[/bold blue]")
-    water = osmnx.features_from_point(
+    water = _fetch_features(
         point, {"natural": ["water", "bay"], "waterway": "riverbank"}, radius
     )
 
@@ -32,15 +32,24 @@ def fetch_data(console: Console, point: Tuple[float, float], radius: int) -> Pos
     )
 
     console.print("Retrieving [bold magenta]train tracks[/bold magenta]")
-    trains = osmnx.features_from_point(point, {"railway": "rail"}, radius)
+    trains = _fetch_features(point, {"railway": "rail"}, radius)
 
     console.print("Retrieving [bold magenta]tram tracks[/bold magenta]")
-    trams = osmnx.features_from_point(point, {"railway": "tram"}, radius)
+    trams = _fetch_features(point, {"railway": "tram"}, radius)
 
     console.print("Retrieving [bold magenta]light rail tracks[/bold magenta]")
-    light_rails = osmnx.features_from_point(point, {"railway": "light_rail"}, radius)
+    light_rails = _fetch_features(point, {"railway": "light_rail"}, radius)
 
     console.print("Retrieving [bold magenta]subway tracks[/bold magenta]")
-    subways = osmnx.features_from_point(point, {"railway": "subway"}, radius)
+    subways = _fetch_features(point, {"railway": "subway"}, radius)
 
     return PosterData(parks, water, roads, subways, trams, light_rails, trains)
+
+
+def _fetch_features(
+    point: Tuple[float, float], tags: dict[str, bool | str | list[str]], radius: int
+):
+    try:
+        return osmnx.features_from_point(point, tags, radius)
+    except Exception:
+        return None
