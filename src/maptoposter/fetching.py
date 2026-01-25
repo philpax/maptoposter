@@ -50,7 +50,11 @@ def _fetch_roads(point: Tuple[float, float], radius: int) -> MultiDiGraph:
     return _cached_fetch(
         key,
         lambda: osmnx.graph_from_point(
-            point, dist=radius, dist_type="bbox", network_type="all"
+            point,
+            dist=radius,
+            dist_type="bbox",
+            network_type="all",
+            truncate_by_edge=True,
         ),
     )
 
