@@ -19,7 +19,7 @@ def fetch_data(console: Console, point: Tuple[float, float], radius: int) -> Pos
 
     console.print("Retrieving [bold blue]water[/bold blue]")
     water = _fetch_features(
-        point, {"natural": ["water", "bay"], "waterway": "riverbank"}, radius
+        point, {"natural": ["water", "bay", "strait"], "waterway": "riverbank"}, radius
     )
 
     console.print("Retrieving [bold yellow]roads[/bold yellow]")
