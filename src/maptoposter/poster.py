@@ -4,6 +4,7 @@ from matplotlib.axes import Axes
 import matplotlib.colors as mcolors
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
+from rich.console import Console
 from maptoposter.themes import Theme
 from matplotlib import pyplot
 from networkx import MultiDiGraph
@@ -33,35 +34,35 @@ class PosterConfig:
     theme: Theme
 
 
-def plot(cfg: PosterConfig, data: PosterData) -> Figure:
-    print("Rendering map...")
+def plot(console: Console, cfg: PosterConfig, data: PosterData) -> Figure:
+    console.print("Setting up canvas")
     fig, ax = _setup_canvas(cfg.theme)
     roads_proj = osmnx.projection.project_graph(data.roads)
 
-    print("Drawing parks/green spaces...")
+    console.print("Drawing [bold green]parks/green spaces[/bold green]")
     _plot_polys_only(ax, data.parks, cfg.theme.parks, zorder=0)
 
-    print("Drawing water...")
+    console.print("Drawing [bold blue]water[/bold blue]")
     _plot_polys_only(ax, data.water, cfg.theme.water, zorder=1)
 
-    print("Drawing roads...")
+    console.print("Drawing [bold yellow]roads[/bold yellow]")
     _plot_roads(ax, roads_proj, cfg.theme)
 
-    print("Drawing train tracks...")
+    console.print("Drawing [bold magenta]train tracks[/bold magenta]")
     _plot_edges(ax, data.trains, cfg.theme.train, linewidth=2, zorder=10)
 
-    print("Drawing tram tracks...")
+    console.print("Drawing [bold magenta]tram tracks[/bold magenta]")
     _plot_edges(ax, data.trams, cfg.theme.tram, linewidth=2.5, zorder=11)
 
-    print("Drawing light rail tracks...")
+    console.print("Drawing [bold magenta]light rail tracks[/bold magenta]")
     _plot_edges(ax, data.light_rails, cfg.theme.light_rail, linewidth=2.5, zorder=12)
 
-    print("Drawing subway tracks...")
+    console.print("Drawing [bold magenta]subway tracks[/bold magenta]")
     _plot_edges(ax, data.subways, cfg.theme.subway, linewidth=3, zorder=13)
 
     _crop_to_dimensions(ax, cfg.point, cfg.radius, roads_proj, fig)
 
-    print("Drawing overlay...")
+    console.print("Drawing [bold]overlay[/bold]")
     _draw_gradient(ax, cfg.theme.gradient_color, position="bottom", zorder=20)
     _draw_gradient(ax, cfg.theme.gradient_color, position="top", zorder=20)
     _draw_text(ax, "Roboto", cfg.title, cfg.subtitle, cfg.point, cfg.theme.text, 21)

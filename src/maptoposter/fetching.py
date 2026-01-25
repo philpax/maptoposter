@@ -1,4 +1,6 @@
 from typing import Tuple
+
+from rich.console import Console
 from maptoposter.poster import PosterData
 import osmnx
 
@@ -7,20 +9,20 @@ def fetch_point(search_term: str) -> Tuple[float, float]:
     return osmnx.geocode(search_term)
 
 
-def fetch_data(point: Tuple[float, float], radius: int) -> PosterData:
-    print("Retrieving parks/green spaces...")
+def fetch_data(console: Console, point: Tuple[float, float], radius: int) -> PosterData:
+    console.print("Retrieving [bold green]parks/green spaces[/bold green]")
     parks = osmnx.features_from_point(
         point,
         {"leisure": "park", "landuse": ["grass", "cemetery"], "natural": "wood"},
         radius,
     )
 
-    print("Retrieving water features...")
+    console.print("Retrieving [bold blue]water[/bold blue]")
     water = osmnx.features_from_point(
         point, {"natural": ["water", "bay"], "waterway": "riverbank"}, radius
     )
 
-    print("Retrieving roads...")
+    console.print("Retrieving [bold yellow]roads[/bold yellow]")
     roads = osmnx.graph_from_point(
         point,
         dist=radius,
@@ -29,16 +31,16 @@ def fetch_data(point: Tuple[float, float], radius: int) -> PosterData:
         truncate_by_edge=True,
     )
 
-    print("Retrieving train network...")
+    console.print("Retrieving [bold magenta]train tracks[/bold magenta]")
     trains = osmnx.features_from_point(point, {"railway": "rail"}, radius)
 
-    print("Retrieving tram network...")
+    console.print("Retrieving [bold magenta]tram tracks[/bold magenta]")
     trams = osmnx.features_from_point(point, {"railway": "tram"}, radius)
 
-    print("Retrieving light rail network...")
+    console.print("Retrieving [bold magenta]light rail tracks[/bold magenta]")
     light_rails = osmnx.features_from_point(point, {"railway": "light_rail"}, radius)
 
-    print("Retrieving subway network...")
+    console.print("Retrieving [bold magenta]subway tracks[/bold magenta]")
     subways = osmnx.features_from_point(point, {"railway": "subway"}, radius)
 
     return PosterData(parks, water, roads, subways, trams, light_rails, trains)

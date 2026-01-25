@@ -16,6 +16,7 @@ authors = [
 dependencies = [
     "osmnx>=2.0",
     "matplotlib>=3.10",
+    "rich>=14.3"
 ]
 
 [project.scripts]

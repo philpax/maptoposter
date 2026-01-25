@@ -7,14 +7,16 @@ from maptoposter import fetching, poster
 from maptoposter.themes import themes
 import sys
 import os
+from rich.console import Console
 
 
 def main():
     args, print_help = parse_args()
+    console = Console()
 
     if args.list_themes:
         for theme_name in themes:
-            print(theme_name)
+            console.print(f"  - {theme_name}")
         return 0
 
     if not args.title or not args.subtitle:
@@ -30,22 +32,22 @@ def main():
     if not args.location:
         location = f"{args.title}, {args.subtitle}"
 
-    print(f"Locating {location}...")
+    console.print(f'Locating "{location}"')
     point = fetching.fetch_point(location)
-    print(f"found {point}")
+    console.print(f"[green]found [bold]{point}[/bold][/green]")
 
     config = poster.PosterConfig(args.title, args.subtitle, point, args.radius, theme)
 
-    print("=== Fetching required data ===")
-    data = fetching.fetch_data(point, config.radius)
-    print("Data retrieved sucessfully!")
+    with console.status("Fetching required data"):
+        data = fetching.fetch_data(console, point, config.radius)
+        console.print("[green]Data retrieved sucessfully![/green]")
 
-    print("=== Drawing poster ===")
-    fig = poster.plot(config, data)
+    with console.status("Drawing poster"):
+        fig = poster.plot(console, config, data)
 
-    print("Saving poster...")
+    console.print("Saving poster")
     save_location = save_poster(fig, config.title, args.theme)
-    print(f"Poster saved at {save_location}")
+    console.print(f"[green]Poster saved at [bold]{save_location}[/bold]![/green]")
 
     pyplot.close(fig)
 
