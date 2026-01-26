@@ -61,6 +61,26 @@ uv run src/maptoposter/__main__.py --dpi 300 ...  # print quality (default)
 uv run src/maptoposter/__main__.py --dpi 600 ...  # high quality
 ```
 
+### Output
+
+Use `-o` / `--output` to specify the output path as a template string. Available placeholders:
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{timestamp}` | Current time (YYYY_MM_DD_HH_MM_SS) |
+| `{title}` | Poster title |
+| `{subtitle}` | Poster subtitle |
+| `{theme}` | Theme name |
+| `{size}` | Print size (e.g., 12x16) |
+| `{dpi}` | Output DPI |
+
+Default: `out/{timestamp}_{title}_{theme}.png`
+
+```bash
+uv run src/maptoposter/__main__.py -o "posters/{title}_{size}.png" ...
+uv run src/maptoposter/__main__.py -o "{title}_{theme}_{dpi}dpi.png" ...
+```
+
 ## Examples
 
 | Command | Result |

@@ -66,7 +66,9 @@ def main():
         fig = poster.plot(console, config, data, args.font, size)
 
     console.print("Saving poster")
-    save_location = save_poster(fig, config.title, args.theme, args.dpi)
+    save_location = save_poster(
+        fig, args.output, config.title, config.subtitle, args.theme, size, args.dpi
+    )
     console.print(f"[green]Poster saved at [bold]{save_location}[/bold]![/green]")
 
     pyplot.close(fig)
@@ -186,18 +188,42 @@ def parse_args() -> Tuple[argparse.Namespace, Callable[[], None]]:
         default=300,
         help="Output resolution in DPI (default: 300)",
     )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default="out/{timestamp}_{title}_{theme}.png",
+        help="Output path template. Placeholders: {timestamp}, {title}, {subtitle}, {theme}, {size}, {dpi} (default: out/{timestamp}_{title}_{theme}.png)",
+    )
 
     return parser.parse_args(), parser.print_help
 
 
-def save_poster(fig: Figure, title: str, theme_name: str, dpi: int = 300) -> str:
+def save_poster(
+    fig: Figure,
+    output_template: str,
+    title: str,
+    subtitle: str,
+    theme_name: str,
+    size: Tuple[float, float],
+    dpi: int,
+) -> str:
     timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    size_str = f"{size[0]}x{size[1]}"
 
-    file_name = f"{timestamp}_{title}_{theme_name}.png".lower().replace(" ", " ")
-    save_location = os.path.join("out", file_name)
+    save_location = output_template.format(
+        timestamp=timestamp,
+        title=title,
+        subtitle=subtitle,
+        theme=theme_name,
+        size=size_str,
+        dpi=dpi,
+    ).lower().replace(" ", "_")
 
-    if not os.path.exists("out"):
-        os.makedirs("out")
+    # Create parent directories if needed
+    parent_dir = os.path.dirname(save_location)
+    if parent_dir and not os.path.exists(parent_dir):
+        os.makedirs(parent_dir)
 
     fig.savefig(save_location, dpi=dpi)
 
