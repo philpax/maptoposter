@@ -13,6 +13,8 @@ source venv/bin/activate
 pip install .
 ```
 
+NixOS users can use the provided `shell.nix` to pull in the required C++ stdlib.
+
 ## Usage
 
 ```bash
