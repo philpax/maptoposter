@@ -1,7 +1,9 @@
 import argparse
 from datetime import datetime
 import os.path
+import platform
 import re
+import subprocess
 from typing import Callable, Tuple
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties, findfont
@@ -73,6 +75,9 @@ def main():
 
     pyplot.close(fig)
 
+    if args.open:
+        open_file(save_location)
+
 
 def validate_font(font: str) -> bool:
     """Check if the font is available (either as a file or font family)."""
@@ -85,6 +90,17 @@ def validate_font(font: str) -> bool:
     default_font = findfont(FontProperties())
     requested_font = findfont(FontProperties(family=font))
     return requested_font != default_font
+
+
+def open_file(path: str) -> None:
+    """Open a file with the system's default application."""
+    system = platform.system()
+    if system == "Darwin":
+        subprocess.run(["open", path])
+    elif system == "Windows":
+        subprocess.run(["start", "", path], shell=True)
+    else:  # Linux and others
+        subprocess.run(["xdg-open", path])
 
 
 def parse_custom_size(size_str: str, is_cm: bool) -> Tuple[float, float] | None:
@@ -194,6 +210,11 @@ def parse_args() -> Tuple[argparse.Namespace, Callable[[], None]]:
         type=str,
         default="out/{timestamp}_{title}_{theme}.png",
         help="Output path template. Placeholders: {timestamp}, {title}, {subtitle}, {theme}, {size}, {dpi} (default: out/{timestamp}_{title}_{theme}.png)",
+    )
+    parser.add_argument(
+        "--open",
+        action="store_true",
+        help="Open the output file after saving",
     )
 
     return parser.parse_args(), parser.print_help

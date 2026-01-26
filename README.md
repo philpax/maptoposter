@@ -81,6 +81,14 @@ uv run src/maptoposter/__main__.py -o "posters/{title}_{size}.png" ...
 uv run src/maptoposter/__main__.py -o "{title}_{theme}_{dpi}dpi.png" ...
 ```
 
+### Open After Saving
+
+Use `--open` to automatically open the generated poster with your system's default image viewer.
+
+```bash
+uv run src/maptoposter/__main__.py --open ...
+```
+
 ## Examples
 
 | Command | Result |
