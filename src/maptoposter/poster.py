@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os.path
 from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 import matplotlib.colors as mcolors
@@ -34,7 +35,7 @@ class PosterConfig:
     theme: Theme
 
 
-def plot(console: Console, cfg: PosterConfig, data: PosterData) -> Figure:
+def plot(console: Console, cfg: PosterConfig, data: PosterData, font: str) -> Figure:
     console.print("Setting up canvas")
     fig, ax = _setup_canvas(cfg.theme)
     roads_proj = osmnx.projection.project_graph(data.roads)
@@ -65,7 +66,7 @@ def plot(console: Console, cfg: PosterConfig, data: PosterData) -> Figure:
     console.print("Drawing [bold]overlay[/bold]")
     _draw_gradient(ax, cfg.theme.gradient_color, position="bottom", zorder=20)
     _draw_gradient(ax, cfg.theme.gradient_color, position="top", zorder=20)
-    _draw_text(ax, "Roboto", cfg.title, cfg.subtitle, cfg.point, cfg.theme.text, 21)
+    _draw_text(ax, font, cfg.title, cfg.subtitle, cfg.point, cfg.theme.text, 21)
 
     return fig
 
@@ -207,17 +208,25 @@ def _draw_gradient(ax: Axes, color: str, position: str, zorder: int) -> None:
 
 def _draw_text(
     ax: Axes,
-    font_family: str,
+    font: str,
     title: str,
     subtitle: str,
     point: Tuple[float, float],
     color: str,
     zorder: int,
 ) -> None:
-    font_main = FontProperties(family=font_family, weight="bold", size=60)
-    font_sub = FontProperties(family=font_family, weight="normal", size=22)
-    font_coords = FontProperties(family=font_family, size=14)
-    font_attributions = FontProperties(family=font_family, size=8)
+    # Check if font is a file path or a font family name
+    is_font_file = os.path.splitext(font)[1] and os.path.isfile(font)
+    if is_font_file:
+        font_main = FontProperties(fname=font, weight="bold", size=60)
+        font_sub = FontProperties(fname=font, weight="normal", size=22)
+        font_coords = FontProperties(fname=font, size=14)
+        font_attributions = FontProperties(fname=font, size=8)
+    else:
+        font_main = FontProperties(family=font, weight="bold", size=60)
+        font_sub = FontProperties(family=font, weight="normal", size=22)
+        font_coords = FontProperties(family=font, size=14)
+        font_attributions = FontProperties(family=font, size=8)
 
     # Title
     title_spaced_letters = "  ".join(list(title.upper()))

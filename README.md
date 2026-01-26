@@ -19,6 +19,10 @@ uv run src/maptoposter/__main__.py --list-themes
 uv run src/maptoposter/__main__.py --help
 ```
 
+### Font
+
+Use `-f` / `--font` to specify a font family name or path to a font file (.ttf, .otf). The default font is Roboto.
+
 ## Examples
 
 | Command | Result |

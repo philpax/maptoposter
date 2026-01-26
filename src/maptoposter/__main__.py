@@ -1,12 +1,13 @@
 import argparse
 from datetime import datetime
+import os.path
 from typing import Callable, Tuple
 from matplotlib.figure import Figure
+from matplotlib.font_manager import FontProperties, findfont
 import matplotlib.pyplot as pyplot
 from maptoposter import fetching, poster
 from maptoposter.themes import themes
 import sys
-import os
 from rich.console import Console
 
 
@@ -28,6 +29,10 @@ def main():
         return 1
     theme = themes[args.theme]
 
+    if not validate_font(args.font):
+        print(f"Font '{args.font}' not found.", file=sys.stderr)
+        return 1
+
     location = args.location
     if not args.location:
         location = f"{args.title}, {args.subtitle}"
@@ -43,13 +48,26 @@ def main():
         console.print("[green]Data retrieved sucessfully![/green]")
 
     with console.status("Drawing poster"):
-        fig = poster.plot(console, config, data)
+        fig = poster.plot(console, config, data, args.font)
 
     console.print("Saving poster")
     save_location = save_poster(fig, config.title, args.theme)
     console.print(f"[green]Poster saved at [bold]{save_location}[/bold]![/green]")
 
     pyplot.close(fig)
+
+
+def validate_font(font: str) -> bool:
+    """Check if the font is available (either as a file or font family)."""
+    # If it has an extension, treat it as a file path
+    if os.path.splitext(font)[1]:
+        return os.path.isfile(font)
+
+    # Otherwise, check if the font family is available
+    # findfont returns the default font if the requested one isn't found
+    default_font = findfont(FontProperties())
+    requested_font = findfont(FontProperties(family=font))
+    return requested_font != default_font
 
 
 def parse_args() -> Tuple[argparse.Namespace, Callable[[], None]]:
@@ -76,6 +94,13 @@ def parse_args() -> Tuple[argparse.Namespace, Callable[[], None]]:
     )
     parser.add_argument(
         "--list-themes", action="store_true", help="List all available themes"
+    )
+    parser.add_argument(
+        "--font",
+        "-f",
+        type=str,
+        default="Roboto",
+        help="Font family name or path to a font file (default: Roboto)",
     )
 
     return parser.parse_args(), parser.print_help
