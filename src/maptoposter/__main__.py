@@ -1,11 +1,13 @@
 import argparse
 from datetime import datetime
 import os.path
+import re
 from typing import Callable, Tuple
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties, findfont
 import matplotlib.pyplot as pyplot
 from maptoposter import fetching, poster
+from maptoposter.poster import PRINT_SIZES, PRINT_SIZE_CATEGORIES
 from maptoposter.themes import themes
 import sys
 from rich.console import Console
@@ -20,6 +22,14 @@ def main():
             console.print(f"  - {theme_name}")
         return 0
 
+    if args.list_sizes:
+        console.print("[bold]Available predefined sizes:[/bold]")
+        for category, sizes in PRINT_SIZE_CATEGORIES.items():
+            console.print(f"\n[bold]{category}:[/bold]")
+            for name, (w, h) in sizes.items():
+                console.print(f"  {name:10} {w}\" x {h}\"")
+        return 0
+
     if not args.title or not args.subtitle:
         print_help()
         return 1
@@ -31,6 +41,11 @@ def main():
 
     if not validate_font(args.font):
         print(f"Font '{args.font}' not found.", file=sys.stderr)
+        return 1
+
+    # Parse size
+    size = parse_size(args)
+    if size is None:
         return 1
 
     location = args.location
@@ -48,10 +63,10 @@ def main():
         console.print("[green]Data retrieved sucessfully![/green]")
 
     with console.status("Drawing poster"):
-        fig = poster.plot(console, config, data, args.font)
+        fig = poster.plot(console, config, data, args.font, size)
 
     console.print("Saving poster")
-    save_location = save_poster(fig, config.title, args.theme)
+    save_location = save_poster(fig, config.title, args.theme, args.dpi)
     console.print(f"[green]Poster saved at [bold]{save_location}[/bold]![/green]")
 
     pyplot.close(fig)
@@ -68,6 +83,46 @@ def validate_font(font: str) -> bool:
     default_font = findfont(FontProperties())
     requested_font = findfont(FontProperties(family=font))
     return requested_font != default_font
+
+
+def parse_custom_size(size_str: str, is_cm: bool) -> Tuple[float, float] | None:
+    """Parse a custom size string (WxH) and validate it."""
+    match = re.match(r"(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)", size_str.lower())
+    if not match:
+        print(f"Invalid size format: '{size_str}'. Use WxH (e.g., 8x12).", file=sys.stderr)
+        return None
+
+    width, height = float(match.group(1)), float(match.group(2))
+    if is_cm:
+        width, height = width / 2.54, height / 2.54  # convert to inches
+
+    # Validate portrait orientation
+    if width >= height:
+        print(f"Size must be portrait orientation (height > width). Got {width:.1f}x{height:.1f}.", file=sys.stderr)
+        return None
+
+    # Validate aspect ratio (between 1:1 and 1:2)
+    ratio = height / width
+    if ratio < 1.0 or ratio > 2.0:
+        print(f"Aspect ratio must be between 1:1 and 1:2 (got 1:{ratio:.2f}).", file=sys.stderr)
+        return None
+
+    return (width, height)
+
+
+def parse_size(args: argparse.Namespace) -> Tuple[float, float] | None:
+    """Parse and validate size arguments."""
+    if args.size_inches:
+        return parse_custom_size(args.size_inches, is_cm=False)
+    elif args.size_cm:
+        return parse_custom_size(args.size_cm, is_cm=True)
+    else:
+        # Use predefined size (default is "12x16")
+        size_name = args.size.lower()
+        if size_name not in PRINT_SIZES:
+            print(f"Unknown size '{args.size}'. Use --list-sizes to see available sizes.", file=sys.stderr)
+            return None
+        return PRINT_SIZES[size_name]
 
 
 def parse_args() -> Tuple[argparse.Namespace, Callable[[], None]]:
@@ -103,10 +158,39 @@ def parse_args() -> Tuple[argparse.Namespace, Callable[[], None]]:
         help="Font family name or path to a font file (default: Roboto)",
     )
 
+    # Size options (mutually exclusive)
+    size_group = parser.add_mutually_exclusive_group()
+    size_group.add_argument(
+        "--size",
+        "-S",
+        type=str,
+        default="12x16",
+        help="Predefined size name (default: 12x16). Use --list-sizes to see options.",
+    )
+    size_group.add_argument(
+        "--size-inches",
+        type=str,
+        help="Custom size in inches (WxH, e.g., 8x12)",
+    )
+    size_group.add_argument(
+        "--size-cm",
+        type=str,
+        help="Custom size in centimeters (WxH, e.g., 20x30)",
+    )
+    parser.add_argument(
+        "--list-sizes", action="store_true", help="List all available predefined sizes"
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=300,
+        help="Output resolution in DPI (default: 300)",
+    )
+
     return parser.parse_args(), parser.print_help
 
 
-def save_poster(fig: Figure, title: str, theme_name: str) -> str:
+def save_poster(fig: Figure, title: str, theme_name: str, dpi: int = 300) -> str:
     timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 
     file_name = f"{timestamp}_{title}_{theme_name}.png".lower().replace(" ", " ")
@@ -115,7 +199,7 @@ def save_poster(fig: Figure, title: str, theme_name: str) -> str:
     if not os.path.exists("out"):
         os.makedirs("out")
 
-    fig.savefig(save_location, dpi=300)
+    fig.savefig(save_location, dpi=dpi)
 
     return save_location
 

@@ -14,6 +14,42 @@ import osmnx
 from shapely import Point
 from typing import Tuple, cast
 
+# Print sizes in portrait orientation (width x height in inches)
+# Organized by category for display purposes
+PRINT_SIZE_CATEGORIES = {
+    "Photo/Poster sizes": {
+        "4x6": (4, 6),
+        "5x7": (5, 7),
+        "8x10": (8, 10),
+        "11x14": (11, 14),
+        "12x16": (12, 16),
+        "16x20": (16, 20),
+        "18x24": (18, 24),
+        "24x36": (24, 36),
+    },
+    "US paper sizes": {
+        "letter": (8.5, 11),
+        "legal": (8.5, 14),
+        "tabloid": (11, 17),
+    },
+    "ISO A-series": {
+        "a6": (4.1, 5.8),
+        "a5": (5.8, 8.3),
+        "a4": (8.3, 11.7),
+        "a3": (11.7, 16.5),
+        "a2": (16.5, 23.4),
+        "a1": (23.4, 33.1),
+        "a0": (33.1, 46.8),
+    },
+}
+
+# Flattened dict for lookup
+PRINT_SIZES = {
+    name: size
+    for sizes in PRINT_SIZE_CATEGORIES.values()
+    for name, size in sizes.items()
+}
+
 
 @dataclass
 class PosterData:
@@ -35,9 +71,15 @@ class PosterConfig:
     theme: Theme
 
 
-def plot(console: Console, cfg: PosterConfig, data: PosterData, font: str) -> Figure:
+def plot(
+    console: Console,
+    cfg: PosterConfig,
+    data: PosterData,
+    font: str,
+    size: Tuple[float, float] = (12, 16),
+) -> Figure:
     console.print("Setting up canvas")
-    fig, ax = _setup_canvas(cfg.theme)
+    fig, ax = _setup_canvas(cfg.theme, size)
     roads_proj = osmnx.projection.project_graph(data.roads)
 
     console.print("Drawing [bold green]parks/green spaces[/bold green]")
@@ -66,13 +108,13 @@ def plot(console: Console, cfg: PosterConfig, data: PosterData, font: str) -> Fi
     console.print("Drawing [bold]overlay[/bold]")
     _draw_gradient(ax, cfg.theme.gradient_color, position="bottom", zorder=20)
     _draw_gradient(ax, cfg.theme.gradient_color, position="top", zorder=20)
-    _draw_text(ax, font, cfg.title, cfg.subtitle, cfg.point, cfg.theme.text, 21)
+    _draw_text(ax, font, cfg.title, cfg.subtitle, cfg.point, cfg.theme.text, 21, size)
 
     return fig
 
 
-def _setup_canvas(theme: Theme) -> Tuple[Figure, Axes]:
-    fig, ax = pyplot.subplots(figsize=(12, 16), facecolor=theme.bg)
+def _setup_canvas(theme: Theme, size: Tuple[float, float]) -> Tuple[Figure, Axes]:
+    fig, ax = pyplot.subplots(figsize=size, facecolor=theme.bg)
     ax.set_facecolor(theme.bg)
     ax.set_position((0.0, 0.0, 1.0, 1.0))
 
@@ -214,22 +256,35 @@ def _draw_text(
     point: Tuple[float, float],
     color: str,
     zorder: int,
+    fig_size: Tuple[float, float],
 ) -> None:
+    fig_width, fig_height = fig_size
+    # Scale fonts based on figure height relative to 16" baseline
+    scale = fig_height / 16.0
+    size_main = 60 * scale
+    size_sub = 22 * scale
+    size_coords = 14 * scale
+    size_attribution = 8 * scale
+    line_width = 1 * scale
+
     # Check if font is a file path or a font family name
     is_font_file = os.path.splitext(font)[1] and os.path.isfile(font)
     if is_font_file:
-        font_main = FontProperties(fname=font, weight="bold", size=60)
-        font_sub = FontProperties(fname=font, weight="normal", size=22)
-        font_coords = FontProperties(fname=font, size=14)
-        font_attributions = FontProperties(fname=font, size=8)
+        font_main = FontProperties(fname=font, weight="bold", size=size_main)
+        font_sub = FontProperties(fname=font, weight="normal", size=size_sub)
+        font_coords = FontProperties(fname=font, size=size_coords)
+        font_attributions = FontProperties(fname=font, size=size_attribution)
     else:
-        font_main = FontProperties(family=font, weight="bold", size=60)
-        font_sub = FontProperties(family=font, weight="normal", size=22)
-        font_coords = FontProperties(family=font, size=14)
-        font_attributions = FontProperties(family=font, size=8)
+        font_main = FontProperties(family=font, weight="bold", size=size_main)
+        font_sub = FontProperties(family=font, weight="normal", size=size_sub)
+        font_coords = FontProperties(family=font, size=size_coords)
+        font_attributions = FontProperties(family=font, size=size_attribution)
 
-    # Title
-    title_spaced_letters = "  ".join(list(title.upper()))
+    # Title (scale letter spacing based on aspect ratio: narrower = fewer spaces)
+    # At aspect 0.75 (12x16 baseline): 2 spaces; narrower (<0.7): 1 space
+    aspect = fig_width / fig_height
+    num_spaces = max(1, round(4 * aspect - 1.2))
+    title_spaced_letters = (" " * num_spaces).join(list(title.upper()))
     ax.text(
         x=0.5,
         y=0.14,
@@ -276,7 +331,7 @@ def _draw_text(
         [0.125, 0.125],
         transform=ax.transAxes,
         color=color,
-        linewidth=1,
+        linewidth=line_width,
         zorder=zorder,
     )
 

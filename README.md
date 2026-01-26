@@ -23,6 +23,44 @@ uv run src/maptoposter/__main__.py --help
 
 Use `-f` / `--font` to specify a font family name or path to a font file (.ttf, .otf). The default font is Roboto.
 
+### Size
+
+Use `-S` / `--size` to select a predefined print size, or specify custom dimensions:
+
+```bash
+# Predefined sizes
+uv run src/maptoposter/__main__.py --size 4x6 ...   # 4x6" postcard
+uv run src/maptoposter/__main__.py --size a4 ...    # A4 paper
+uv run src/maptoposter/__main__.py --size letter ...
+
+# Custom sizes
+uv run src/maptoposter/__main__.py --size-inches 8x12 ...
+uv run src/maptoposter/__main__.py --size-cm 20x30 ...
+
+# List all predefined sizes
+uv run src/maptoposter/__main__.py --list-sizes
+```
+
+**Available predefined sizes:**
+
+| Category | Sizes |
+| -------- | ----- |
+| Photo/Poster | 4x6, 5x7, 8x10, 11x14, 12x16 (default), 16x20, 18x24, 24x36 |
+| US Paper | letter (8.5x11), legal (8.5x14), tabloid (11x17) |
+| ISO A-series | a6, a5, a4, a3, a2, a1, a0 |
+
+Custom sizes must be portrait orientation (height > width) with an aspect ratio between 1:1 and 1:2.
+
+### DPI
+
+Use `--dpi` to set the output resolution (default: 300). Higher values produce larger files with more detail.
+
+```bash
+uv run src/maptoposter/__main__.py --dpi 150 ...  # draft quality
+uv run src/maptoposter/__main__.py --dpi 300 ...  # print quality (default)
+uv run src/maptoposter/__main__.py --dpi 600 ...  # high quality
+```
+
 ## Examples
 
 | Command | Result |
