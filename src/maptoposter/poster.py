@@ -12,6 +12,7 @@ from networkx import MultiDiGraph
 import numpy
 import osmnx
 from shapely import Point
+from shapely.ops import linemerge, polygonize, unary_union
 from typing import Tuple, cast
 
 # Print sizes in portrait orientation (width x height in inches)
@@ -55,6 +56,7 @@ PRINT_SIZES = {
 class PosterData:
     parks: GeoDataFrame | None
     water: GeoDataFrame | None
+    coastline: GeoDataFrame | None
     roads: MultiDiGraph
     subways: GeoDataFrame | None
     trams: GeoDataFrame | None
@@ -81,6 +83,17 @@ def plot(
     console.print("Setting up canvas")
     fig, ax = _setup_canvas(cfg.theme, size)
     roads_proj = osmnx.projection.project_graph(data.roads)
+
+    if data.coastline is not None:
+        console.print("Drawing [bold cyan]ocean[/bold cyan]")
+        aspect = size[0] / size[1]
+        ocean = _build_ocean_polygon(
+            data.coastline, cfg.point, cfg.radius,
+            roads_proj.graph["crs"], aspect,
+        )
+        if ocean is not None:
+            ocean_gdf = GeoDataFrame(geometry=[ocean], crs=roads_proj.graph["crs"])
+            ocean_gdf.plot(ax=ax, facecolor=cfg.theme.water, edgecolor="none", zorder=-1)
 
     console.print("Drawing [bold green]parks/green spaces[/bold green]")
     _plot_polys_only(ax, data.parks, cfg.theme.parks, zorder=0)
@@ -177,6 +190,29 @@ def _plot_roads(ax: Axes, roads: MultiDiGraph, theme: Theme) -> None:
     )
 
 
+def _projected_bbox(
+    point: Tuple[float, float],
+    radius: int,
+    crs: str,
+    aspect: float,
+) -> Tuple[Point, float, float]:
+    """Return (projected_center, half_x, half_y) for the given point/radius/aspect."""
+    lat, lon = point
+    proj, _ = osmnx.projection.project_geometry(
+        Point(lon, lat), crs="EPSG:4326", to_crs=crs
+    )
+    center = cast(Point, proj)
+
+    half_x = radius
+    half_y = radius
+    if aspect > 1:
+        half_y = half_x / aspect
+    else:
+        half_x = half_y * aspect
+
+    return center, half_x, half_y
+
+
 def _crop_to_dimensions(
     ax: Axes,
     point: Tuple[float, float],
@@ -184,30 +220,45 @@ def _crop_to_dimensions(
     roads_proj: MultiDiGraph,
     fig: Figure,
 ) -> None:
-    lat, lon = point
-
-    proj, _ = osmnx.projection.project_geometry(
-        Point(lon, lat), crs="EPSG:4326", to_crs=roads_proj.graph["crs"]
+    aspect = fig.get_size_inches()[0] / fig.get_size_inches()[1]
+    center, half_x, half_y = _projected_bbox(
+        point, radius, roads_proj.graph["crs"], aspect
     )
-    center = cast(Point, proj)
-    center_x, center_y = center.x, center.y
-
-    fig_width, fig_height = fig.get_size_inches()
-    aspect = fig_width / fig_height
-
-    # Start from the *requested* radius
-    half_x = radius
-    half_y = radius
-
-    # Cut inward to match aspect
-    if aspect > 1:  # landscape → reduce height
-        half_y = half_x / aspect
-    else:  # portrait → reduce width
-        half_x = half_y * aspect
 
     ax.set_aspect("equal", adjustable="box")
-    ax.set_xlim(center_x - half_x, center_x + half_x)
-    ax.set_ylim(center_y - half_y, center_y + half_y)
+    ax.set_xlim(center.x - half_x, center.x + half_x)
+    ax.set_ylim(center.y - half_y, center.y + half_y)
+
+
+def _build_ocean_polygon(
+    coastline: GeoDataFrame,
+    point: Tuple[float, float],
+    radius: int,
+    crs: str,
+    aspect: float,
+):
+    """Construct ocean polygons from coastline segments within the bbox."""
+    from shapely.geometry import box as shapely_box
+
+    proj = osmnx.projection.project_gdf(coastline, to_crs=crs)
+    center, half_x, half_y = _projected_bbox(point, radius, crs, aspect)
+
+    bbox = shapely_box(
+        center.x - half_x, center.y - half_y,
+        center.x + half_x, center.y + half_y,
+    )
+
+    lines = proj.loc[proj.geometry.type.isin(["LineString", "MultiLineString"])]
+    if lines.empty:
+        return None
+    merged = linemerge(unary_union(lines.geometry))
+    combined = unary_union([bbox.boundary, merged])
+    polygons = list(polygonize(combined))
+
+    ocean_polys = [p for p in polygons if not p.contains(center)]
+    if not ocean_polys:
+        return None
+    return unary_union(ocean_polys)
 
 
 def _draw_gradient(ax: Axes, color: str, position: str, zorder: int) -> None:

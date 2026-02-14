@@ -22,6 +22,9 @@ def fetch_data(console: Console, point: Tuple[float, float], radius: int) -> Pos
         point, {"natural": ["water", "bay", "strait"], "waterway": "riverbank"}, radius
     )
 
+    console.print("Retrieving [bold cyan]coastline[/bold cyan]")
+    coastline = _fetch_features(point, {"natural": "coastline"}, radius)
+
     console.print("Retrieving [bold yellow]roads[/bold yellow]")
     roads = osmnx.graph_from_point(
         point,
@@ -43,7 +46,7 @@ def fetch_data(console: Console, point: Tuple[float, float], radius: int) -> Pos
     console.print("Retrieving [bold magenta]subway tracks[/bold magenta]")
     subways = _fetch_features(point, {"railway": "subway"}, radius)
 
-    return PosterData(parks, water, roads, subways, trams, light_rails, trains)
+    return PosterData(parks, water, coastline, roads, subways, trams, light_rails, trains)
 
 
 def _fetch_features(
