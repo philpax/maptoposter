@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os.path
 from geopandas import GeoDataFrame
 from matplotlib.axes import Axes
 import matplotlib.colors as mcolors
@@ -11,13 +12,51 @@ from networkx import MultiDiGraph
 import numpy
 import osmnx
 from shapely import Point
+from shapely.ops import linemerge, polygonize, unary_union
 from typing import Tuple, cast
+
+# Print sizes in portrait orientation (width x height in inches)
+# Organized by category for display purposes
+PRINT_SIZE_CATEGORIES = {
+    "Photo/Poster sizes": {
+        "4x6": (4, 6),
+        "5x7": (5, 7),
+        "8x10": (8, 10),
+        "11x14": (11, 14),
+        "12x16": (12, 16),
+        "16x20": (16, 20),
+        "18x24": (18, 24),
+        "24x36": (24, 36),
+    },
+    "US paper sizes": {
+        "letter": (8.5, 11),
+        "legal": (8.5, 14),
+        "tabloid": (11, 17),
+    },
+    "ISO A-series": {
+        "a6": (4.1, 5.8),
+        "a5": (5.8, 8.3),
+        "a4": (8.3, 11.7),
+        "a3": (11.7, 16.5),
+        "a2": (16.5, 23.4),
+        "a1": (23.4, 33.1),
+        "a0": (33.1, 46.8),
+    },
+}
+
+# Flattened dict for lookup
+PRINT_SIZES = {
+    name: size
+    for sizes in PRINT_SIZE_CATEGORIES.values()
+    for name, size in sizes.items()
+}
 
 
 @dataclass
 class PosterData:
     parks: GeoDataFrame | None
     water: GeoDataFrame | None
+    coastline: GeoDataFrame | None
     roads: MultiDiGraph
     subways: GeoDataFrame | None
     trams: GeoDataFrame | None
@@ -34,10 +73,27 @@ class PosterConfig:
     theme: Theme
 
 
-def plot(console: Console, cfg: PosterConfig, data: PosterData) -> Figure:
+def plot(
+    console: Console,
+    cfg: PosterConfig,
+    data: PosterData,
+    font: str,
+    size: Tuple[float, float] = (12, 16),
+) -> Figure:
     console.print("Setting up canvas")
-    fig, ax = _setup_canvas(cfg.theme)
+    fig, ax = _setup_canvas(cfg.theme, size)
     roads_proj = osmnx.projection.project_graph(data.roads)
+
+    if data.coastline is not None:
+        console.print("Drawing [bold cyan]ocean[/bold cyan]")
+        aspect = size[0] / size[1]
+        ocean = _build_ocean_polygon(
+            data.coastline, cfg.point, cfg.radius,
+            roads_proj.graph["crs"], aspect,
+        )
+        if ocean is not None:
+            ocean_gdf = GeoDataFrame(geometry=[ocean], crs=roads_proj.graph["crs"])
+            ocean_gdf.plot(ax=ax, facecolor=cfg.theme.water, edgecolor="none", zorder=-1)
 
     console.print("Drawing [bold green]parks/green spaces[/bold green]")
     _plot_polys_only(ax, data.parks, cfg.theme.parks, zorder=0)
@@ -65,13 +121,13 @@ def plot(console: Console, cfg: PosterConfig, data: PosterData) -> Figure:
     console.print("Drawing [bold]overlay[/bold]")
     _draw_gradient(ax, cfg.theme.gradient_color, position="bottom", zorder=20)
     _draw_gradient(ax, cfg.theme.gradient_color, position="top", zorder=20)
-    _draw_text(ax, "Roboto", cfg.title, cfg.subtitle, cfg.point, cfg.theme.text, 21)
+    _draw_text(ax, font, cfg.title, cfg.subtitle, cfg.point, cfg.theme.text, 21, size)
 
     return fig
 
 
-def _setup_canvas(theme: Theme) -> Tuple[Figure, Axes]:
-    fig, ax = pyplot.subplots(figsize=(12, 16), facecolor=theme.bg)
+def _setup_canvas(theme: Theme, size: Tuple[float, float]) -> Tuple[Figure, Axes]:
+    fig, ax = pyplot.subplots(figsize=size, facecolor=theme.bg)
     ax.set_facecolor(theme.bg)
     ax.set_position((0.0, 0.0, 1.0, 1.0))
 
@@ -134,6 +190,29 @@ def _plot_roads(ax: Axes, roads: MultiDiGraph, theme: Theme) -> None:
     )
 
 
+def _projected_bbox(
+    point: Tuple[float, float],
+    radius: int,
+    crs: str,
+    aspect: float,
+) -> Tuple[Point, float, float]:
+    """Return (projected_center, half_x, half_y) for the given point/radius/aspect."""
+    lat, lon = point
+    proj, _ = osmnx.projection.project_geometry(
+        Point(lon, lat), crs="EPSG:4326", to_crs=crs
+    )
+    center = cast(Point, proj)
+
+    half_x = radius
+    half_y = radius
+    if aspect > 1:
+        half_y = half_x / aspect
+    else:
+        half_x = half_y * aspect
+
+    return center, half_x, half_y
+
+
 def _crop_to_dimensions(
     ax: Axes,
     point: Tuple[float, float],
@@ -141,30 +220,45 @@ def _crop_to_dimensions(
     roads_proj: MultiDiGraph,
     fig: Figure,
 ) -> None:
-    lat, lon = point
-
-    proj, _ = osmnx.projection.project_geometry(
-        Point(lon, lat), crs="EPSG:4326", to_crs=roads_proj.graph["crs"]
+    aspect = fig.get_size_inches()[0] / fig.get_size_inches()[1]
+    center, half_x, half_y = _projected_bbox(
+        point, radius, roads_proj.graph["crs"], aspect
     )
-    center = cast(Point, proj)
-    center_x, center_y = center.x, center.y
-
-    fig_width, fig_height = fig.get_size_inches()
-    aspect = fig_width / fig_height
-
-    # Start from the *requested* radius
-    half_x = radius
-    half_y = radius
-
-    # Cut inward to match aspect
-    if aspect > 1:  # landscape → reduce height
-        half_y = half_x / aspect
-    else:  # portrait → reduce width
-        half_x = half_y * aspect
 
     ax.set_aspect("equal", adjustable="box")
-    ax.set_xlim(center_x - half_x, center_x + half_x)
-    ax.set_ylim(center_y - half_y, center_y + half_y)
+    ax.set_xlim(center.x - half_x, center.x + half_x)
+    ax.set_ylim(center.y - half_y, center.y + half_y)
+
+
+def _build_ocean_polygon(
+    coastline: GeoDataFrame,
+    point: Tuple[float, float],
+    radius: int,
+    crs: str,
+    aspect: float,
+):
+    """Construct ocean polygons from coastline segments within the bbox."""
+    from shapely.geometry import box as shapely_box
+
+    proj = osmnx.projection.project_gdf(coastline, to_crs=crs)
+    center, half_x, half_y = _projected_bbox(point, radius, crs, aspect)
+
+    bbox = shapely_box(
+        center.x - half_x, center.y - half_y,
+        center.x + half_x, center.y + half_y,
+    )
+
+    lines = proj.loc[proj.geometry.type.isin(["LineString", "MultiLineString"])]
+    if lines.empty:
+        return None
+    merged = linemerge(unary_union(lines.geometry))
+    combined = unary_union([bbox.boundary, merged])
+    polygons = list(polygonize(combined))
+
+    ocean_polys = [p for p in polygons if not p.contains(center)]
+    if not ocean_polys:
+        return None
+    return unary_union(ocean_polys)
 
 
 def _draw_gradient(ax: Axes, color: str, position: str, zorder: int) -> None:
@@ -207,20 +301,41 @@ def _draw_gradient(ax: Axes, color: str, position: str, zorder: int) -> None:
 
 def _draw_text(
     ax: Axes,
-    font_family: str,
+    font: str,
     title: str,
     subtitle: str,
     point: Tuple[float, float],
     color: str,
     zorder: int,
+    fig_size: Tuple[float, float],
 ) -> None:
-    font_main = FontProperties(family=font_family, weight="bold", size=60)
-    font_sub = FontProperties(family=font_family, weight="normal", size=22)
-    font_coords = FontProperties(family=font_family, size=14)
-    font_attributions = FontProperties(family=font_family, size=8)
+    fig_width, fig_height = fig_size
+    # Scale fonts based on figure height relative to 16" baseline
+    scale = fig_height / 16.0
+    size_main = 60 * scale
+    size_sub = 22 * scale
+    size_coords = 14 * scale
+    size_attribution = 8 * scale
+    line_width = 1 * scale
 
-    # Title
-    title_spaced_letters = "  ".join(list(title.upper()))
+    # Check if font is a file path or a font family name
+    is_font_file = os.path.splitext(font)[1] and os.path.isfile(font)
+    if is_font_file:
+        font_main = FontProperties(fname=font, weight="bold", size=size_main)
+        font_sub = FontProperties(fname=font, weight="normal", size=size_sub)
+        font_coords = FontProperties(fname=font, size=size_coords)
+        font_attributions = FontProperties(fname=font, size=size_attribution)
+    else:
+        font_main = FontProperties(family=font, weight="bold", size=size_main)
+        font_sub = FontProperties(family=font, weight="normal", size=size_sub)
+        font_coords = FontProperties(family=font, size=size_coords)
+        font_attributions = FontProperties(family=font, size=size_attribution)
+
+    # Title (scale letter spacing based on aspect ratio: narrower = fewer spaces)
+    # At aspect 0.75 (12x16 baseline): 2 spaces; narrower (<0.7): 1 space
+    aspect = fig_width / fig_height
+    num_spaces = max(1, round(4 * aspect - 1.2))
+    title_spaced_letters = (" " * num_spaces).join(list(title.upper()))
     ax.text(
         x=0.5,
         y=0.14,
@@ -267,7 +382,7 @@ def _draw_text(
         [0.125, 0.125],
         transform=ax.transAxes,
         color=color,
-        linewidth=1,
+        linewidth=line_width,
         zorder=zorder,
     )
 
